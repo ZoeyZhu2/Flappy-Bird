@@ -1253,6 +1253,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   soundFXSourcePrefab: {fileID: 2635081794510049743, guid: 12c7400d69dc44d9dba865a75ce1b074, type: 3}
+  defaultSoundFX: {fileID: 8300000, guid: 067e530f390e0426a97d6a905093ceab, type: 3}
 --- !u!4 &1346138272
 Transform:
   m_ObjectHideFlags: 0
@@ -1571,6 +1572,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 076b98ec6eb4f4978981e5fadcfcb090, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SettingsManager
+  pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
+  volume: 1
 --- !u!4 &1516172709
 Transform:
   m_ObjectHideFlags: 0
@@ -1616,6 +1619,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   startScreen: {fileID: 0}
+  pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
+  volume: 1
 --- !u!4 &1756805392
 Transform:
   m_ObjectHideFlags: 0

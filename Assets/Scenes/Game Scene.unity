@@ -1204,6 +1204,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   pausedScreen: {fileID: 2063415440}
   pauseButton: {fileID: 18524299}
+  pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
+  volume: 1
 --- !u!1 &915436248
 GameObject:
   m_ObjectHideFlags: 0
@@ -2418,6 +2420,8 @@ MonoBehaviour:
   scoreText: {fileID: 1150202915}
   gameOverScreen: {fileID: 269897091}
   highScoreText: {fileID: 1410989701}
+  pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
+  volume: 1
 --- !u!1 &1627654121
 GameObject:
   m_ObjectHideFlags: 0

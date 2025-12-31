@@ -2562,6 +2562,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: '::'
   closeButton: {fileID: 1928711300}
+  pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
+  volume: 1
 --- !u!1 &2057468236
 GameObject:
   m_ObjectHideFlags: 0

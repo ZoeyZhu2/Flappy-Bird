@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using System;
 
@@ -13,18 +14,39 @@ public class LogicScript : MonoBehaviour
     private string key;
     private PlayerInputActions inputActions;
     private bool isGameOver = false;
+    [SerializeField] private AudioClip pressSound;
+    public float volume = 1f;
 
     void Awake()
     {
         key = GetHighScoreKey();
         inputActions = InputManager.inputActions;
-        inputActions.UI.PlayAgain.performed += ctx => 
+    }
+
+    void OnEnable()
+    {
+        if (inputActions != null)
         {
-            if (isGameOver && ctx.performed)
-            {
-                RestartGame();
-            }
-        };
+            inputActions.UI.PlayAgain.performed += OnPlayAgain;
+            inputActions.UI.PlayAgain.Enable();
+        }
+    }
+
+    void OnDisable()
+    {
+        if (inputActions != null)
+        {
+            inputActions.UI.PlayAgain.performed -= OnPlayAgain;
+            inputActions.UI.PlayAgain.Disable();
+        }
+    }
+
+    private void OnPlayAgain(InputAction.CallbackContext ctx)
+    {
+        if (isGameOver && ctx.performed)
+        {
+            RestartGame();
+        }
     }
 
     private string GetHighScoreKey()
@@ -48,6 +70,7 @@ public class LogicScript : MonoBehaviour
     
     public void RestartGame()
     {
+        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
         isGameOver = false; 
         inputActions.UI.PlayAgain.Disable();
         inputActions.UI.Pause.Enable();

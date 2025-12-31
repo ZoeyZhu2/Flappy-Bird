@@ -4,6 +4,8 @@ using UnityEngine.SceneManagement;
 public class StartScreenScript : MonoBehaviour
 {
     public GameObject startScreen;
+    [SerializeField] private AudioClip pressSound;
+    public float volume = 1f;
 
     public void OpenStartScreen()
     {
@@ -18,6 +20,7 @@ public class StartScreenScript : MonoBehaviour
     public void PlayNormal()
     {
         Debug.Log("PlayNormal called!");
+        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetNormalMode();
@@ -33,6 +36,7 @@ public class StartScreenScript : MonoBehaviour
     public void PlayDaily()
     {
         Debug.Log("PlayDaily called!");
+        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetDailyMode();
@@ -48,6 +52,7 @@ public class StartScreenScript : MonoBehaviour
     public void QuitGame()
     {
         Debug.Log("QuitGame called!");
+        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
         Application.Quit();
     }
     
