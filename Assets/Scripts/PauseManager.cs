@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class PauseManager : MonoBehaviour
 {
@@ -6,30 +7,33 @@ public class PauseManager : MonoBehaviour
     private bool isPaused = false;
     private PlayerInputActions inputActions;
     public GameObject pauseButton;
-    
+
     void Awake()
     {
-        inputActions = new PlayerInputActions();
-        // Subscribe to the Pause action
-        inputActions.UI.Pause.performed += ctx => TogglePause();
-        /*
-        Explanation of the line above:
-        inputActions.UI.Pause: Pause action
-        .performed: Event triggered when the action is performed
-        +=: subscribes to event (adds a listener)
-        ctx => Lambda expression defining the action to take when the event is triggered
-        TogglePause(): Method to call when the Pause action is performed
-        */
+        inputActions = InputManager.inputActions;
     }
-    
+
     void OnEnable()
     {
-        inputActions.UI.Pause.Enable();
+        if (inputActions != null)
+        {
+            inputActions.UI.Pause.performed += OnPausePerformed;
+            inputActions.UI.Pause.Enable();
+        }
     }
 
     void OnDisable()
     {
-        inputActions.UI.Pause.Disable();
+        if (inputActions != null)
+        {
+            inputActions.UI.Pause.performed -= OnPausePerformed;
+            inputActions.UI.Pause.Disable();
+        }
+    }
+
+    private void OnPausePerformed(InputAction.CallbackContext ctx)
+    {
+        TogglePause();
     }
 
     void TogglePause()
@@ -49,16 +53,16 @@ public class PauseManager : MonoBehaviour
     {
         isPaused = true;
         Time.timeScale = 0f; // Pause the game
-        pausedScreen.SetActive(true); // Show the paused screen
-        pauseButton.SetActive(false); // Hide the pause button
+        if (pausedScreen != null) pausedScreen.SetActive(true); // Show the paused screen
+        if (pauseButton != null) pauseButton.SetActive(false); // Hide the pause button
     }
 
     public void Resume()
     {
         isPaused = false;
         Time.timeScale = 1f; // Resume the game
-        pausedScreen.SetActive(false); // Hide the paused screen
-        pauseButton.SetActive(true); // Show the pause button
+        if (pausedScreen != null) pausedScreen.SetActive(false); // Hide the paused screen
+        if (pauseButton != null) pauseButton.SetActive(true); // Show the pause button
     }
 
     public void goHome()
