@@ -13,7 +13,7 @@ public class SettingsCloseButton : MonoBehaviour
     {
         closeButton.onClick.AddListener(() =>
         {
-            SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+            AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
             SettingsManager.Instance.CloseSettings();
         });
     }

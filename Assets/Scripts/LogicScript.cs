@@ -70,7 +70,7 @@ public class LogicScript : MonoBehaviour
     
     public void RestartGame()
     {
-        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         isGameOver = false; 
         inputActions.UI.PlayAgain.Disable();
         inputActions.UI.Pause.Enable();

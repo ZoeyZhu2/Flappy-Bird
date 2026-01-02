@@ -4,7 +4,7 @@ public class BirdScript : MonoBehaviour
 {
     public Rigidbody2D myRigidBody; //creating slot for a RigidBody2D (like the bird's component!)
     private PlayerInputActions inputActions; //created a class for my PlayerInputActions InputActions asset
-    private float flapStrength = 7;
+    private float flapStrength = 11;
     public bool birdIsAlive = true;
     public LogicScript logic;
     private Camera cam;
@@ -13,7 +13,9 @@ public class BirdScript : MonoBehaviour
 
     [SerializeField] private AudioClip jumpSound;
     [SerializeField] private AudioClip deathSound;
-    public float volume = 1f; //want it to be editable in settings so making it public
+    [SerializeField] private float jumpVolume = 0.5f; //want it to be testable. A bit too loud compared to other sounds atm
+    [SerializeField] private float deathVolume = 0.7f; //want it to be testable. A bit too loud compared to other sounds atm
+
     private void Awake()
     {
         inputActions = InputManager.inputActions;
@@ -42,7 +44,7 @@ public class BirdScript : MonoBehaviour
         if (inputActions.Player.Jump.WasPressedThisFrame() && birdIsAlive)
         {
             myRigidBody.linearVelocity = Vector2.up * flapStrength;
-            SoundFXManager.Instance.PlaySoundFX(jumpSound, transform, volume);
+            AudioManager.Instance.PlaySoundFX(jumpSound, transform, jumpVolume);
         }
 
         if (birdIsAlive && (transform.position.y > camTop || transform.position.y < camBottom))
@@ -69,7 +71,7 @@ public class BirdScript : MonoBehaviour
 
     private void Die()
     {
-        SoundFXManager.Instance.PlaySoundFX(deathSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(deathSound, transform, deathVolume);
         logic.GameOver();
         birdIsAlive = false;
     }

@@ -1232,28 +1232,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1346138272}
-  - component: {fileID: 1346138271}
+  - component: {fileID: 1346138273}
   m_Layer: 0
-  m_Name: SoundFX Manager
+  m_Name: Audio Manager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1346138271
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1346138270}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1fa3ba99d6da94a3182635f71c0abfc2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: '::'
-  soundFXSourcePrefab: {fileID: 2635081794510049743, guid: 12c7400d69dc44d9dba865a75ce1b074, type: 3}
-  defaultSoundFX: {fileID: 8300000, guid: 067e530f390e0426a97d6a905093ceab, type: 3}
 --- !u!4 &1346138272
 Transform:
   m_ObjectHideFlags: 0
@@ -1269,6 +1255,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1346138273
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1346138270}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f5e09aaac4d542fcadca06c42b67a5e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
+  soundFXSourcePrefab: {fileID: 2635081794510049743, guid: 12c7400d69dc44d9dba865a75ce1b074, type: 3}
+  defaultSoundFX: {fileID: 8300000, guid: 067e530f390e0426a97d6a905093ceab, type: 3}
 --- !u!1 &1441315269
 GameObject:
   m_ObjectHideFlags: 0

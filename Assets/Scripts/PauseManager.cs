@@ -54,7 +54,7 @@ public class PauseManager : MonoBehaviour
 
     public void Pause()
     {
-        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         isPaused = true;
         Time.timeScale = 0f; // Pause the game
         if (pausedScreen != null) pausedScreen.SetActive(true); // Show the paused screen
@@ -68,7 +68,7 @@ public class PauseManager : MonoBehaviour
     public void Resume()
     {
 
-        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         isPaused = false;
         Time.timeScale = 1f; // Resume the game
         if (pausedScreen != null) pausedScreen.SetActive(false); // Hide the paused screen
@@ -81,13 +81,13 @@ public class PauseManager : MonoBehaviour
 
     public void goHome()
     {
-        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         Time.timeScale = 1f; // Ensure time scale is reset
         UnityEngine.SceneManagement.SceneManager.LoadScene(0);
     }
     public void QuitGame()
     {
-        SoundFXManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         Time.timeScale = 1f; // Ensure time scale is reset
         Application.Quit();
     }
