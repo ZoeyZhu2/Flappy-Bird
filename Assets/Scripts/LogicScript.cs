@@ -124,14 +124,14 @@ public class LogicScript : MonoBehaviour
     {
         gameOverScreen.SetActive(false);
 
-        if (AudioManager.Instance != null) 
-        { 
-            AudioManager.Instance.PlayGameMusic(); 
-        } 
-        else 
-        { 
-            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!"); 
-        }
+        // if (AudioManager.Instance != null) 
+        // { 
+        //     AudioManager.Instance.PlayGameMusic(); 
+        // } 
+        // else 
+        // { 
+        //     Debug.LogWarning("AudioManager or startScreenMusic is not assigned!"); 
+        // }
         
         playerScore = 0;
         scoreText.text = "Current Score: " + playerScore.ToString();

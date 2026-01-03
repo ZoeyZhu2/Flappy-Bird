@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.Audio;
+using UnityEngine.SceneManagement;
 
 public class AudioManager : MonoBehaviour
 {
@@ -29,10 +30,10 @@ public class AudioManager : MonoBehaviour
 
     //Default volumes
     //prior to AudioMixer implementation
-    //[SerializeField] private float defaultStartScreenMusicVolume = 0.25f; 
-    //[SerializeField] private float defaultGameMusicVolume = 0.25f;
+    //[SerializeField] private float defaultStartScreenMusicVolume = 0.1f; 
+    //[SerializeField] private float defaultGameMusicVolume = 0.1f;
 
-    [SerializeField] private float defaultMusicVolume = 0.25f;
+    [SerializeField] private float defaultMusicVolume = 0.05f;
     [SerializeField] private float defaultSoundFXVolume = 1f;
 
     //Audio Mixer Groups
@@ -76,16 +77,60 @@ public class AudioManager : MonoBehaviour
         backgroundMusicSource.outputAudioMixerGroup = musicGroup;
 
         // Load player preferences or use defaults
-        float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") ? PlayerPrefs.GetFloat("BackgroundMusicVolume") : defaultMusicVolume;
-        float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") ? PlayerPrefs.GetFloat("SoundFXVolume") : defaultSoundFXVolume;
+        //ReapplyVolumeSettings();
+
+        // Debug.Log("AudioManager: Using AudioMixer named '" + audioMixer.name + "'");
+
+    }
+
+    private void Start()
+    {
+        //Start playing music for the initial scene
+        Scene currentScene = SceneManager.GetActiveScene();
+        OnSceneLoaded(currentScene, LoadSceneMode.Single);
+    }
+
+    public void ReapplyVolumeSettings()
+    {
+        float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") 
+            ? PlayerPrefs.GetFloat("BackgroundMusicVolume") 
+            : defaultMusicVolume;
         
-        Debug.Log("SettingsUIManager: Retrieved volumes - SoundFX=" + soundFXVol + " Music=" + musicVol);
+        float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") 
+            ? PlayerPrefs.GetFloat("SoundFXVolume") 
+            : defaultSoundFXVolume;
+
+        // Debug.Log("SettingsUIManager: Retrieved volumes - SoundFX=" + soundFXVol + " Music=" + musicVol);
+
         
         SetMusicVolume(musicVol);
         SetSoundFXVolume(soundFXVol);
+    }
 
-        Debug.Log("AudioManager: Using AudioMixer named '" + audioMixer.name + "'");
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
 
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        ReapplyVolumeSettings();
+        switch (scene.buildIndex)
+        {
+            case 0: //Start Screen
+                PlayStartScreenMusic();
+                break;
+            case 1: //Main Game
+                PlayGameMusic();
+                break;
+            case 2: //Settings Screen
+                //keep current music
+                break;
+        }
     }
 
     //prior to AudioMixer implementation
@@ -145,13 +190,13 @@ public class AudioManager : MonoBehaviour
             db = -80f; // fallback if parameter doesn't exist
         }
 
-        Debug.Log("AudioManager: GetMusicVolume - Got dB=" + db + " from mixer");
+        // Debug.Log("AudioManager: GetMusicVolume - Got dB=" + db + " from mixer");
 
 
         //convert dB back to linear
         float linearVolume = Mathf.Pow(10f, db / 20f);
 
-         Debug.Log("AudioManager: GetMusicVolume - Converted to linear=" + linearVolume);
+        // Debug.Log("AudioManager: GetMusicVolume - Converted to linear=" + linearVolume);
 
 
         return linearVolume;
@@ -163,13 +208,13 @@ public class AudioManager : MonoBehaviour
         //conversion to dB
         float dB = linearVolume <= 0.0001f ? -80f : Mathf.Log10(linearVolume) * 20f;
         
-        Debug.Log("AudioManager: SetMusicVolume input=" + linearVolume + " converted to dB=" + dB);
+        // Debug.Log("AudioManager: SetMusicVolume input=" + linearVolume + " converted to dB=" + dB);
 
         bool success = audioMixer.SetFloat("BackgroundMusicVolume", dB);
-            Debug.Log("AudioManager: SetFloat success=" + success);
+        // Debug.Log("AudioManager: SetFloat success=" + success);
 
-audioMixer.GetFloat("BackgroundMusicVolume", out float verifyDb);
-    Debug.Log("AudioManager: Verified dB in mixer=" + verifyDb);
+        audioMixer.GetFloat("BackgroundMusicVolume", out float verifyDb);
+        //Debug.Log("AudioManager: Verified dB in mixer=" + verifyDb);
 
 
         PlayerPrefs.SetFloat("BackgroundMusicVolume", linearVolume);
@@ -279,7 +324,7 @@ audioMixer.GetFloat("BackgroundMusicVolume", out float verifyDb);
         //Prior to AudioMixer implementation
         //audioSource.PlayOneShot(clipToPlay, Mathf.Clamp01(volume * soundFXVolume));
         audioSource.PlayOneShot(clipToPlay, Mathf.Clamp01(volume));
-        Debug.Log("SoundFXManager: audiosource.PlayOneShot() called for clip=" + (clipToPlay != null ? clipToPlay.name : "(null)"));
+        //Debug.Log("SoundFXManager: audiosource.PlayOneShot() called for clip=" + (clipToPlay != null ? clipToPlay.name : "(null)"));
 
         // Ensure a small minimum lifetime so very-short clips still play
         float life = clipToPlay.length > 0f ? clipToPlay.length : 0.2f;

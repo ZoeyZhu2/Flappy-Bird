@@ -1272,7 +1272,7 @@ MonoBehaviour:
   poolSize: 10
   startScreenMusic: {fileID: 8300000, guid: c13b60568bf664aca9ed923f4ac9d140, type: 3}
   gameMusic: {fileID: 8300000, guid: c87db5784ae984386a5dfe01af5d1640, type: 3}
-  defaultMusicVolume: 0.25
+  defaultMusicVolume: 0.05
   defaultSoundFXVolume: 1
   musicGroup: {fileID: 4168951874645230408, guid: 5eb53ac42c2d04f43a80d876a2745e45, type: 2}
   soundFXGroup: {fileID: -6325560356943180963, guid: 5eb53ac42c2d04f43a80d876a2745e45, type: 2}

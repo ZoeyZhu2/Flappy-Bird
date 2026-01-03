@@ -28,18 +28,12 @@ public class SettingsUIManager : MonoBehaviour
             Debug.LogError("SettingsUIManager: AudioManager instance is not found.");
             return;
         }
-        //releading saved volumes
-        float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") ? PlayerPrefs.GetFloat("BackgroundMusicVolume") : 0.25f;
-        float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") ? PlayerPrefs.GetFloat("SoundFXVolume") : 1f;
+        // AudioManager.Instance.ReapplyVolumeSettings();
 
-        Debug.Log("SettingsUIManager: Re-applying volumes from PlayerPrefs - Music=" + musicVol + " SoundFX=" + soundFXVol);
-        AudioManager.Instance.SetMusicVolume(musicVol);
-        AudioManager.Instance.SetSoundFXVolume(soundFXVol);
-
-        float currentMusicVol = AudioManager.Instance.GetMusicVolume();
-        float currentSoundFXVol = AudioManager.Instance.GetSoundFXVolume();
+        // float currentMusicVol = AudioManager.Instance.GetMusicVolume();
+        // float currentSoundFXVol = AudioManager.Instance.GetSoundFXVolume();
     
-        Debug.Log("SettingsUIManager: After re-applying, volumes are - Music=" + currentMusicVol + " SoundFX=" + currentSoundFXVol);
+        // Debug.Log("SettingsUIManager: After re-applying, volumes are - Music=" + currentMusicVol + " SoundFX=" + currentSoundFXVol);
 
 
 
@@ -51,14 +45,14 @@ public class SettingsUIManager : MonoBehaviour
 
         soundFXVolumeText.text = soundFXSlider.value.ToString("0.00", CultureInfo.InvariantCulture);
 
-         Debug.Log("SettingsUIManager Start: GetMusicVolume returned=" + musicVol);
-    Debug.Log("SettingsUIManager Start: musicSlider.minValue=" + musicSlider.minValue + " maxValue=" + musicSlider.maxValue);
-    Debug.Log("SettingsUIManager Start: Setting musicSlider.value to " + musicVol);
+        // Debug.Log("SettingsUIManager Start: GetMusicVolume returned=" + musicVol);
+        // Debug.Log("SettingsUIManager Start: musicSlider.minValue=" + musicSlider.minValue + " maxValue=" + musicSlider.maxValue);
+        // Debug.Log("SettingsUIManager Start: Setting musicSlider.value to " + musicVol);
         musicToggle.isOn = !AudioManager.Instance.IsMusicMuted();
         musicSlider.value = AudioManager.Instance.GetMusicVolume();
         musicToggle.onValueChanged.AddListener(OnMusicToggled);
         musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
-            Debug.Log("SettingsUIManager Start: musicSlider.value is now=" + musicSlider.value);
+        // Debug.Log("SettingsUIManager Start: musicSlider.value is now=" + musicSlider.value);
 
         musicVolumeText.text = musicSlider.value.ToString("0.00", CultureInfo.InvariantCulture);
     }

@@ -15,15 +15,17 @@ public class StartScreenScript : MonoBehaviour
 
     public void OpenStartScreen()
     {
+        
         startScreen.SetActive(true);
-        if (AudioManager.Instance != null)
-        {
-            AudioManager.Instance.PlayStartScreenMusic();
-        }
-        else
-        {
-            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!");
-        }
+        // if (AudioManager.Instance != null)
+        // {
+        //     AudioManager.Instance.ReapplyVolumeSettings();
+        //     AudioManager.Instance.PlayStartScreenMusic();
+        // }
+        // else
+        // {
+        //     Debug.LogWarning("AudioManager or startScreenMusic is not assigned!");
+        // }
     }
 
 
