@@ -71,7 +71,7 @@ public class LogicScript : MonoBehaviour
     public void RestartGame()
     {
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
-        AudioManager.Instance.MusicMute(false);
+        AudioManager.Instance.MusicUnpause();
         isGameOver = false; 
         inputActions.UI.PlayAgain.Disable();
         inputActions.UI.Pause.Enable();
@@ -86,7 +86,7 @@ public class LogicScript : MonoBehaviour
         isGameOver = true;
         gameOverScreen.SetActive(true);
         
-        AudioManager.Instance.MusicMute(true);
+        AudioManager.Instance.MusicPause();
         
 
 

@@ -4,7 +4,7 @@ public class BirdScript : MonoBehaviour
 {
     public Rigidbody2D myRigidBody; //creating slot for a RigidBody2D (like the bird's component!)
     private PlayerInputActions inputActions; //created a class for my PlayerInputActions InputActions asset
-    private float flapStrength = 11;
+    private float flapStrength = 10;
     public bool birdIsAlive = true;
     public LogicScript logic;
     private Camera cam;

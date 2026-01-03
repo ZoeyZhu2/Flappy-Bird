@@ -78,8 +78,14 @@ public class AudioManager : MonoBehaviour
         // Load player preferences or use defaults
         float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") ? PlayerPrefs.GetFloat("BackgroundMusicVolume") : defaultMusicVolume;
         float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") ? PlayerPrefs.GetFloat("SoundFXVolume") : defaultSoundFXVolume;
+        
+        Debug.Log("SettingsUIManager: Retrieved volumes - SoundFX=" + soundFXVol + " Music=" + musicVol);
+        
         SetMusicVolume(musicVol);
         SetSoundFXVolume(soundFXVol);
+
+        Debug.Log("AudioManager: Using AudioMixer named '" + audioMixer.name + "'");
+
     }
 
     //prior to AudioMixer implementation
@@ -133,9 +139,21 @@ public class AudioManager : MonoBehaviour
         //Prior to AudioMixer implementation
         //return musicVolume;
 
-        float dB = audioMixer.GetFloat("BackgroundMusicVolume", out float db)? db : -80f;
+        if (!audioMixer.GetFloat("BackgroundMusicVolume", out float db))
+        {
+            Debug.LogError("AudioManager: GetMusicVolume - GetFloat FAILED, using fallback -80dB"); 
+            db = -80f; // fallback if parameter doesn't exist
+        }
+
+        Debug.Log("AudioManager: GetMusicVolume - Got dB=" + db + " from mixer");
+
+
         //convert dB back to linear
-        float linearVolume = Mathf.Pow(10f, dB / 20f);
+        float linearVolume = Mathf.Pow(10f, db / 20f);
+
+         Debug.Log("AudioManager: GetMusicVolume - Converted to linear=" + linearVolume);
+
+
         return linearVolume;
     }
 
@@ -144,7 +162,15 @@ public class AudioManager : MonoBehaviour
         linearVolume = Mathf.Clamp01(linearVolume);
         //conversion to dB
         float dB = linearVolume <= 0.0001f ? -80f : Mathf.Log10(linearVolume) * 20f;
-        audioMixer.SetFloat("BackgroundMusicVolume", dB);
+        
+        Debug.Log("AudioManager: SetMusicVolume input=" + linearVolume + " converted to dB=" + dB);
+
+        bool success = audioMixer.SetFloat("BackgroundMusicVolume", dB);
+            Debug.Log("AudioManager: SetFloat success=" + success);
+
+audioMixer.GetFloat("BackgroundMusicVolume", out float verifyDb);
+    Debug.Log("AudioManager: Verified dB in mixer=" + verifyDb);
+
 
         PlayerPrefs.SetFloat("BackgroundMusicVolume", linearVolume);
         PlayerPrefs.Save();
@@ -179,6 +205,22 @@ public class AudioManager : MonoBehaviour
         // }
     }
 
+    public void MusicPause()
+    {
+        if (backgroundMusicSource != null && backgroundMusicSource.isPlaying)
+        {
+            backgroundMusicSource.Pause();
+        }
+    }
+
+    public void MusicUnpause()
+    {
+        if (backgroundMusicSource != null && !backgroundMusicSource.isPlaying && !musicMuted)
+        {
+            backgroundMusicSource.UnPause();
+        }
+    }
+
     public void PlaySoundFX(AudioClip audioClip, Transform spawnTransform, float volume)
     {
         
@@ -205,9 +247,9 @@ public class AudioManager : MonoBehaviour
         Vector3 spawnPos = spawnTransform != null ? spawnTransform.position : Vector3.zero;
 
         //Diagnostic info
-        var clipName = clipToPlay != null ? clipToPlay.name : "(null)";
-        var spawnName = spawnTransform != null ? spawnTransform.name : "(no transform)";
-        Debug.Log("SoundFXManager: PlaySoundFX called with clip=" + clipName + " spawn=" + spawnName + " prefabAssigned=" + (soundFXSourcePrefab != null));
+        // var clipName = clipToPlay != null ? clipToPlay.name : "(null)";
+        // var spawnName = spawnTransform != null ? spawnTransform.name : "(no transform)";
+        // Debug.Log("SoundFXManager: PlaySoundFX called with clip=" + clipName + " spawn=" + spawnName + " prefabAssigned=" + (soundFXSourcePrefab != null));
 
         //Get an inactive audio source from the pool or create a new one if none are available
         AudioSource audioSource = soundFXPool.Count > 0 ? soundFXPool.Dequeue() : Instantiate(soundFXSourcePrefab, spawnPos, Quaternion.identity, transform);
@@ -224,14 +266,14 @@ public class AudioManager : MonoBehaviour
         audioSource.volume = Mathf.Clamp01(volume);
 
         // Diagnostic info to help find why UI sounds may be silent
-        Debug.Log("SoundFXManager: audioSource activeInHierarchy=" + audioSource.gameObject.activeInHierarchy +
-              " enabled=" + audioSource.enabled +
-              " mute=" + audioSource.mute +
-              " playOnAwake=" + audioSource.playOnAwake +
-              " spatialBlend=" + audioSource.spatialBlend +
-              " output=" + (audioSource.outputAudioMixerGroup != null ? audioSource.outputAudioMixerGroup.name : "(none)"));
+        // Debug.Log("SoundFXManager: audioSource activeInHierarchy=" + audioSource.gameObject.activeInHierarchy +
+        //       " enabled=" + audioSource.enabled +
+        //       " mute=" + audioSource.mute +
+        //       " playOnAwake=" + audioSource.playOnAwake +
+        //       " spatialBlend=" + audioSource.spatialBlend +
+        //       " output=" + (audioSource.outputAudioMixerGroup != null ? audioSource.outputAudioMixerGroup.name : "(none)"));
 
-        Debug.Log("SoundFXManager: AudioListener present=" + (audioListener != null) + (audioListener != null ? " name=" + audioListener.gameObject.name : ""));
+        // Debug.Log("SoundFXManager: AudioListener present=" + (audioListener != null) + (audioListener != null ? " name=" + audioListener.gameObject.name : ""));
 
         // Use PlayOneShot for short UI sounds (more reliable for tiny clips)
         //Prior to AudioMixer implementation
@@ -283,9 +325,12 @@ public class AudioManager : MonoBehaviour
     {
        //Prior to AudioMixer implementation
        //return soundFXVolume;
-        float dB = audioMixer.GetFloat("SoundFXVolume", out float db) ? db : -80f;
+        if (!audioMixer.GetFloat("SoundFXVolume", out float db))
+        {
+            db = -80f; // fallback if parameter doesn't exist
+        }
         //convert dB back to linear
-        float linearVolume = Mathf.Pow(10f, dB / 20f);
+        float linearVolume = Mathf.Pow(10f, db / 20f);
         return linearVolume;
     }
 

@@ -52,19 +52,19 @@ public class PipeSpawnerScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Debug.Log($"Timer BEFORE: {timer}, deltaTime: {Time.deltaTime}, timeScale: {Time.timeScale}");
+        // Debug.Log($"Timer BEFORE: {timer}, deltaTime: {Time.deltaTime}, timeScale: {Time.timeScale}");
     
         timer += Time.deltaTime;
     
-        Debug.Log($"Timer AFTER: {timer}, spawnRate: {spawnRate}");
+        // Debug.Log($"Timer AFTER: {timer}, spawnRate: {spawnRate}");
         while (timer >= spawnRate)
         {
             spawnPipe();
             timer -= spawnRate;
-            Debug.Log("Pipe spawned!");
-            Debug.Log("Is this running?");
+            // Debug.Log("Pipe spawned!");
+            // Debug.Log("Is this running?");
         }
-        Debug.Log(spawnRate);
+        // Debug.Log(spawnRate);
     }
     void updateCameraBounds()
     {
