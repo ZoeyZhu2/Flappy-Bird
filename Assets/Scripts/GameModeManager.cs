@@ -10,8 +10,8 @@ public enum GameMode
 public class GameModeManager : MonoBehaviour
 {
     public static GameModeManager Instance;
-    public GameMode currentMode;
-    public int currentSeed;
+    private GameMode currentMode;
+    private int currentSeed;
     
     private void Awake()
     {
@@ -35,4 +35,15 @@ public class GameModeManager : MonoBehaviour
         currentMode = GameMode.DailySeed;
         currentSeed = DateTime.UtcNow.Date.GetHashCode();
     }
+
+    public int GetCurrentSeed()
+    {
+        return currentSeed;
+    }
+
+    public GameMode GetCurrentMode()
+    {
+        return currentMode;
+    }
+
 }

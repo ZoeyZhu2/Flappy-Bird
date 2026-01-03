@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class PipeMiddleScript : MonoBehaviour
 {
-    public LogicScript logic;
+    [SerializeField] private LogicScript logic; //used to be public
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

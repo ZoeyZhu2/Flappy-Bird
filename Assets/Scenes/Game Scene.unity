@@ -1206,6 +1206,9 @@ MonoBehaviour:
   pauseButton: {fileID: 18524299}
   pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
   volume: 1
+  quitButton: {fileID: 83641232}
+  quitButtonText: {fileID: 857014947}
+  logicScript: {fileID: 1465635436}
 --- !u!1 &915436248
 GameObject:
   m_ObjectHideFlags: 0
@@ -1663,7 +1666,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c7803f065423d4e1c81713694b60bd6b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  logic: {fileID: 0}
+  logic: {fileID: 1465635436}
 --- !u!1 &1150202913
 GameObject:
   m_ObjectHideFlags: 0
@@ -2212,10 +2215,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   myRigidBody: {fileID: 1395437945}
   birdIsAlive: 1
-  logic: {fileID: 0}
+  logic: {fileID: 1465635436}
   jumpSound: {fileID: 8300000, guid: f08a0f98702024b0cb284376067acb30, type: 3}
   deathSound: {fileID: 8300000, guid: 8400907775abb4b338368e179d930855, type: 3}
-  volume: 1
+  jumpVolume: 0.5
+  deathVolume: 0.7
 --- !u!58 &1395437949
 CircleCollider2D:
   m_ObjectHideFlags: 0

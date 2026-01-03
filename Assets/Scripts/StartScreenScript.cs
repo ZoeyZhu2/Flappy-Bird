@@ -3,9 +3,9 @@ using UnityEngine.SceneManagement;
 
 public class StartScreenScript : MonoBehaviour
 {
-    public GameObject startScreen;
+    [SerializeField] private GameObject startScreen; //used to be public
     [SerializeField] private AudioClip pressSound;
-    public float volume = 1f;
+    [SerializeField] private float volume = 1f; //used to be public
 
     
     public void Start()

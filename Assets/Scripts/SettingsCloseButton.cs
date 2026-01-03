@@ -4,9 +4,9 @@ using UnityEngine.UI;
 
 public class SettingsCloseButton : MonoBehaviour
 {
-    public Button closeButton;
+    [SerializeField] private Button closeButton; //used to be public
     [SerializeField] private AudioClip pressSound;
-    public float volume = 1f;
+    [SerializeField] private float volume = 1f; //used to be public
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()

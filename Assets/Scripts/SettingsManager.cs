@@ -6,7 +6,7 @@ public class SettingsManager : MonoBehaviour
     public static SettingsManager Instance;
     // public GameObject settingsScreen;
     [SerializeField] private AudioClip pressSound;
-    public float volume = 1f;
+    [SerializeField] private float volume = 1f; //used to be public
 
     void Awake()
     {

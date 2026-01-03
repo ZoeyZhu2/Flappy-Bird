@@ -2,9 +2,9 @@ using UnityEngine;
 using System;
 
 public class PipeSpawnerScript : MonoBehaviour
-{
-    public GameObject pipe;
-    public float spawnRate = 2;
+        {
+    [SerializeField] private GameObject pipe; //used to be public
+    [SerializeField] private float spawnRate = 2; //used to be public
     private float timer = 0;
     // public float heightOffset = 5;
     private float gapSize = 7;
@@ -38,9 +38,9 @@ public class PipeSpawnerScript : MonoBehaviour
         
         updateCameraBounds();
 
-        if (GameModeManager.Instance.currentMode == GameMode.DailySeed)
+        if (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed)
         {
-            rng = new System.Random(GameModeManager.Instance.currentSeed);
+            rng = new System.Random(GameModeManager.Instance.GetCurrentSeed());
         }
         else
         {
@@ -92,7 +92,7 @@ public class PipeSpawnerScript : MonoBehaviour
 
         
         // Instantiate first at 0 Y
-        float minGapSize = 6f;
+        float minGapSize = 6.5f;
         float maxGapSize = 10f;
 
         //Seedless

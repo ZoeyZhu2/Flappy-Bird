@@ -2,11 +2,11 @@ using UnityEngine;
 
 public class BirdScript : MonoBehaviour
 {
-    public Rigidbody2D myRigidBody; //creating slot for a RigidBody2D (like the bird's component!)
+    [SerializeField] private Rigidbody2D myRigidBody; //Used to be public. creating slot for a RigidBody2D (like the bird's component!)
     private PlayerInputActions inputActions; //created a class for my PlayerInputActions InputActions asset
     private float flapStrength = 10;
-    public bool birdIsAlive = true;
-    public LogicScript logic;
+    [SerializeField] private bool birdIsAlive = true; //used to be public
+    [SerializeField] private LogicScript logic; //used to be public
     private Camera cam;
     private float camTop;
     private float camBottom;

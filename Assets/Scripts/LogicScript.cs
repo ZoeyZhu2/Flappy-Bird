@@ -7,15 +7,15 @@ using System;
 public class LogicScript : MonoBehaviour
 {
     private int playerScore;
-    public Text scoreText;
-    public GameObject gameOverScreen;
+    [SerializeField] private Text scoreText; //used to be public
+    [SerializeField] private GameObject gameOverScreen; //used to be public
     private int highScore;
-    public Text highScoreText;
+    [SerializeField] private Text highScoreText; //used to be public
     private string key;
     private PlayerInputActions inputActions;
     private bool isGameOver = false;
     [SerializeField] private AudioClip pressSound;
-    public float volume = 1f;
+    [SerializeField] private float volume = 1f; //used to be public
 
     void Awake()
     {
@@ -51,7 +51,7 @@ public class LogicScript : MonoBehaviour
 
     private string GetHighScoreKey()
     {
-        if (GameModeManager.Instance.currentMode == GameMode.DailySeed)
+        if (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed)
         {
             // Unique key for each day
             return "DailyHighScore_" + DateTime.UtcNow.ToString("yyyyMMdd");
@@ -117,7 +117,7 @@ public class LogicScript : MonoBehaviour
             PlayerPrefs.Save();
             highScore = playerScore;
         }
-        highScoreText.text = (GameModeManager.Instance.currentMode == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
+        highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
     }
 
     void Start()
@@ -144,7 +144,7 @@ public class LogicScript : MonoBehaviour
 
         //game mode version
         highScore = PlayerPrefs.GetInt(key, 0); //0 is the alternative value if no value for key is found
-        highScoreText.text = (GameModeManager.Instance.currentMode == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
+        highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
 
 
     }
