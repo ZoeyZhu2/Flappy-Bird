@@ -1269,13 +1269,14 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   soundFXSourcePrefab: {fileID: 2635081794510049743, guid: 12c7400d69dc44d9dba865a75ce1b074, type: 3}
   defaultSoundFX: {fileID: 8300000, guid: 067e530f390e0426a97d6a905093ceab, type: 3}
-  soundFXVolume: 0.5
   poolSize: 10
   startScreenMusic: {fileID: 8300000, guid: c13b60568bf664aca9ed923f4ac9d140, type: 3}
   gameMusic: {fileID: 8300000, guid: c87db5784ae984386a5dfe01af5d1640, type: 3}
-  musicVolume: 0.5
-  defaultStartScreenMusicVolume: 0.5
-  defaultGameMusicVolume: 0.5
+  defaultMusicVolume: 0.25
+  defaultSoundFXVolume: 1
+  musicGroup: {fileID: 4168951874645230408, guid: 5eb53ac42c2d04f43a80d876a2745e45, type: 2}
+  soundFXGroup: {fileID: -6325560356943180963, guid: 5eb53ac42c2d04f43a80d876a2745e45, type: 2}
+  audioMixer: {fileID: 24100000, guid: 5eb53ac42c2d04f43a80d876a2745e45, type: 2}
 --- !u!1 &1441315269
 GameObject:
   m_ObjectHideFlags: 0

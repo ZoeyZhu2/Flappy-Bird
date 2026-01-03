@@ -36,6 +36,13 @@ public class SettingsUIManager : MonoBehaviour
         soundFXSlider.onValueChanged.AddListener(OnSoundFXVolumeChanged);
 
         soundFXVolumeText.text = soundFXSlider.value.ToString("0.00", CultureInfo.InvariantCulture);
+
+        musicToggle.isOn = !AudioManager.Instance.IsMusicMuted();
+        musicSlider.value = AudioManager.Instance.GetMusicVolume();
+        musicToggle.onValueChanged.AddListener(OnMusicToggled);
+        musicSlider.onValueChanged.AddListener(OnMusicVolumeChanged);
+
+        musicVolumeText.text = musicSlider.value.ToString("0.00", CultureInfo.InvariantCulture);
     }
     
     private void OnSoundFXToggled(bool isOn)
@@ -61,7 +68,28 @@ public class SettingsUIManager : MonoBehaviour
         {
             soundFXSlider.onValueChanged.RemoveListener(OnSoundFXVolumeChanged);
         }
+        if (musicToggle != null)
+        {
+            musicToggle.onValueChanged.RemoveListener(OnMusicToggled);
+        }
+        if (musicSlider != null)
+        {
+            musicSlider.onValueChanged.RemoveListener(OnMusicVolumeChanged);
+        }
     }
+
+    private void OnMusicToggled(bool isOn)
+    {
+        AudioManager.Instance.MusicMute(!isOn);
+    }
+
+    private void OnMusicVolumeChanged(float volume)
+    {
+        AudioManager.Instance.SetMusicVolume(volume);
+        float newVolume = AudioManager.Instance.GetMusicVolume();
+        musicVolumeText.text = newVolume.ToString("0.00", CultureInfo.InvariantCulture);
+    }
+
     // Update is called once per frame
     void Update()
     {
