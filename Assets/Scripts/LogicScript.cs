@@ -71,6 +71,7 @@ public class LogicScript : MonoBehaviour
     public void RestartGame()
     {
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.MusicMute(false);
         isGameOver = false; 
         inputActions.UI.PlayAgain.Disable();
         inputActions.UI.Pause.Enable();
@@ -85,17 +86,8 @@ public class LogicScript : MonoBehaviour
         isGameOver = true;
         gameOverScreen.SetActive(true);
         
-        //delete the following later
-        // Ensure any buttons under the game over screen are active (defensive)
-        if (gameOverScreen != null)
-        {
-            var buttons = gameOverScreen.GetComponentsInChildren<UnityEngine.UI.Button>(true);
-            foreach (var b in buttons)
-            {
-                if (b != null && b.gameObject != null)
-                    b.gameObject.SetActive(true);
-            }
-        }
+        AudioManager.Instance.MusicMute(true);
+        
 
 
         Time.timeScale = 0f;
@@ -131,6 +123,16 @@ public class LogicScript : MonoBehaviour
     void Start()
     {
         gameOverScreen.SetActive(false);
+
+        if (AudioManager.Instance != null) 
+        { 
+            AudioManager.Instance.PlayGameMusic(); 
+        } 
+        else 
+        { 
+            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!"); 
+        }
+        
         playerScore = 0;
         scoreText.text = "Current Score: " + playerScore.ToString();
 

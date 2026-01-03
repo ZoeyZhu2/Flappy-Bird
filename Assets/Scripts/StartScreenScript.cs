@@ -7,10 +7,26 @@ public class StartScreenScript : MonoBehaviour
     [SerializeField] private AudioClip pressSound;
     public float volume = 1f;
 
+    
+    public void Start()
+    {
+        OpenStartScreen();
+    }
+
     public void OpenStartScreen()
     {
         startScreen.SetActive(true);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlayStartScreenMusic();
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!");
+        }
     }
+
+
 
     public void CloseStartScreen()
     {
@@ -20,7 +36,14 @@ public class StartScreenScript : MonoBehaviour
     public void PlayNormal()
     {
         Debug.Log("PlayNormal called!");
-        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!");
+        }
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetNormalMode();
@@ -36,7 +59,14 @@ public class StartScreenScript : MonoBehaviour
     public void PlayDaily()
     {
         Debug.Log("PlayDaily called!");
-        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        if (AudioManager.Instance != null)
+        {
+            AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        }
+        else
+        {
+            Debug.LogWarning("AudioManager or startScreenMusic is not assigned!");
+        }
         if (GameModeManager.Instance != null)
         {
             GameModeManager.Instance.SetDailyMode();

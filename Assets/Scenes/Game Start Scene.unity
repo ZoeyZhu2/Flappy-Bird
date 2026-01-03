@@ -1269,6 +1269,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: '::'
   soundFXSourcePrefab: {fileID: 2635081794510049743, guid: 12c7400d69dc44d9dba865a75ce1b074, type: 3}
   defaultSoundFX: {fileID: 8300000, guid: 067e530f390e0426a97d6a905093ceab, type: 3}
+  soundFXVolume: 0.5
+  poolSize: 10
+  startScreenMusic: {fileID: 8300000, guid: c13b60568bf664aca9ed923f4ac9d140, type: 3}
+  gameMusic: {fileID: 8300000, guid: c87db5784ae984386a5dfe01af5d1640, type: 3}
+  musicVolume: 0.5
+  defaultStartScreenMusicVolume: 0.5
+  defaultGameMusicVolume: 0.5
 --- !u!1 &1441315269
 GameObject:
   m_ObjectHideFlags: 0
@@ -1618,7 +1625,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3d8472b9a112b441aade1ff09c91914f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
-  startScreen: {fileID: 0}
+  startScreen: {fileID: 9131025}
   pressSound: {fileID: 8300000, guid: ce7e274673b1e4cffb16c4442dc64d0a, type: 3}
   volume: 1
 --- !u!4 &1756805392

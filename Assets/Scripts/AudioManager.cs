@@ -7,7 +7,7 @@ public class AudioManager : MonoBehaviour
     [SerializeField] private AudioSource soundFXSourcePrefab; //SerializeField makes private variables visible in the inspector
     [SerializeField] private AudioClip defaultSoundFX; // fallback clip if caller didn't assign one
 
-    [SerializeField] private float soundFXVolume = 1f; //player setting
+    [SerializeField] private float soundFXVolume = 0.5f; //player setting
     private bool soundFXMuted = false;
 
     private AudioListener audioListener;
@@ -15,6 +15,20 @@ public class AudioManager : MonoBehaviour
     //Object pool for playing soundFX for optimization (so I don't have to create/destroy audio sources all the time)
     private Queue<AudioSource> soundFXPool = new Queue<AudioSource>();
     [SerializeField] private int poolSize = 10; //number of audio sources in the pool
+
+
+    private AudioSource backgroundMusicSource;
+
+    [SerializeField] private AudioClip startScreenMusic;
+    [SerializeField] private AudioClip gameMusic;
+
+    [SerializeField] private float musicVolume = 0.5f; //player setting
+
+    [SerializeField] private float defaultStartScreenMusicVolume = 0.5f; 
+    [SerializeField] private float defaultGameMusicVolume = 0.5f;
+
+    private float defaultMusicVolume = 1f;
+    private bool musicMuted = false;
 
     private void Awake()
     {
@@ -29,9 +43,10 @@ public class AudioManager : MonoBehaviour
         }
 
         // Initialize the soundFX audio source pool
+        //keeping pool under the AudioManager object in hierarchy
         for (int i = 0; i < poolSize; i++)
         {
-            AudioSource audioSource = Instantiate(soundFXSourcePrefab, Vector3.zero, Quaternion.identity);
+            AudioSource audioSource = Instantiate(soundFXSourcePrefab, Vector3.zero, Quaternion.identity, transform);
             audioSource.gameObject.SetActive(false);
             soundFXPool.Enqueue(audioSource);
         }
@@ -42,6 +57,86 @@ public class AudioManager : MonoBehaviour
         {
             Debug.LogWarning("AudioManager: No AudioListener found in the scene. Please add one to hear sounds.");
         }
+
+        //Initialize background music source
+        backgroundMusicSource = gameObject.AddComponent<AudioSource>();
+        backgroundMusicSource.loop = true;
+        backgroundMusicSource.gameObject.SetActive(true);
+    }
+
+
+    private void PlayMusic(AudioClip musicClip, float volume)
+    {
+        if (backgroundMusicSource == null)
+        {
+            Debug.LogWarning("AudioManager: backgroundMusicSource is not initialized.");
+            return;
+        }
+
+        if (musicMuted)
+        {
+            Debug.Log("AudioManager: music is muted, not playing music.");
+            return;
+        }
+
+        if (backgroundMusicSource.clip == musicClip)
+        {
+            return; // prevents restarting same music
+        }
+
+        backgroundMusicSource.clip = musicClip;
+        backgroundMusicSource.volume = Mathf.Clamp01(volume * musicVolume);
+        backgroundMusicSource.Play();
+    }
+
+    //ensures only one background music is playing at a time
+    public void PlayStartScreenMusic()
+    {
+        defaultMusicVolume = defaultStartScreenMusicVolume;
+        PlayMusic(startScreenMusic, defaultStartScreenMusicVolume);
+    }
+
+    public void PlayGameMusic()
+    {
+        defaultMusicVolume = defaultGameMusicVolume;
+        PlayMusic(gameMusic, defaultGameMusicVolume);
+    }
+
+    public float GetMusicVolume()
+    {
+        return musicVolume;
+    }
+
+    //fix here
+    public void SetMusicVolume(float volume)
+    {
+        musicVolume = Mathf.Clamp01(volume);
+        if (backgroundMusicSource != null)
+        {
+             backgroundMusicSource.volume = musicVolume * defaultMusicVolume; 
+        }
+    }
+
+    public bool IsMusicMuted()
+    {
+        return musicMuted;
+    }
+
+    public void MusicMute(bool muteStatus)
+    {
+        musicMuted = muteStatus;
+        //Keeps the music “in sync” if unmuted
+        // if (musicMuted && backgroundMusicSource.isPlaying)
+        // {
+        //     backgroundMusicSource.Pause();
+        // }
+        // else if (!musicMuted && !backgroundMusicSource.isPlaying)
+        // {
+        //     backgroundMusicSource.UnPause();
+        // }
+
+        //music continues running but muted
+        backgroundMusicSource.mute = musicMuted;
     }
 
     public void PlaySoundFX(AudioClip audioClip, Transform spawnTransform, float volume)
@@ -75,7 +170,7 @@ public class AudioManager : MonoBehaviour
         Debug.Log("SoundFXManager: PlaySoundFX called with clip=" + clipName + " spawn=" + spawnName + " prefabAssigned=" + (soundFXSourcePrefab != null));
 
         //Get an inactive audio source from the pool or create a new one if none are available
-        AudioSource audioSource = soundFXPool.Count > 0 ? soundFXPool.Dequeue() : Instantiate(soundFXSourcePrefab, spawnPos, Quaternion.identity);
+        AudioSource audioSource = soundFXPool.Count > 0 ? soundFXPool.Dequeue() : Instantiate(soundFXSourcePrefab, spawnPos, Quaternion.identity, transform);
         audioSource.transform.position = spawnPos;
         audioSource.gameObject.SetActive(true);
         
