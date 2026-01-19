@@ -9,6 +9,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Firebase;
 using Firebase.Extensions;
+using TMPro;
 
 public class LogicScript : MonoBehaviour
 {
@@ -25,12 +26,29 @@ public class LogicScript : MonoBehaviour
     [SerializeField] private AuthManager authManager;
     private FirebaseFirestore db;
     private string userId;
+    [SerializeField] private TMP_Text newHighScore;
+
+    [SerializeField] private GameObject createAccountCanvas;
+    [SerializeField] private TMP_InputField emailInputC;
+    [SerializeField] private TMP_InputField passwordInputC;
+    [SerializeField] private TMP_InputField usernameInputC;
+    [SerializeField] private Button createAccountButton;
+    [SerializeField] private Button skipButton;
+    [SerializeField] private Button signInButton;
+
+
 
     void Awake()
     {
         // key = GetHighScoreKey();
         inputActions = InputManager.inputActions;
         db = FirebaseFirestore.DefaultInstance;
+        newHighScore.text = "New High Score!";
+        newHighScore.gameObject.SetActive(false);
+        createAccountButton.gameObject.SetActive(false);
+        signInButton.gameObject.SetActive(false);
+        skipButton.gameObject.SetActive(false);
+        createAccountCanvas.SetActive(false);
     }
 
     void OnEnable()
@@ -40,6 +58,10 @@ public class LogicScript : MonoBehaviour
             inputActions.UI.PlayAgain.performed += OnPlayAgain;
             inputActions.UI.PlayAgain.Enable();
         }
+        createAccountButton.onClick.AddListener(ShowCreateAccount);
+        skipButton.onClick.AddListener(Skip);
+        signInButton.onClick.AddListener(ShowSignIn);
+
     }
 
     void OnDisable()
@@ -49,6 +71,9 @@ public class LogicScript : MonoBehaviour
             inputActions.UI.PlayAgain.performed -= OnPlayAgain;
             inputActions.UI.PlayAgain.Disable();
         }
+        createAccountButton.onClick.RemoveListener(ShowCreateAccount);
+        skipButton.onClick.RemoveListener(Skip);
+        signInButton.onClick.RemoveListener(ShowSignIn);
     }
 
     private void OnPlayAgain(InputAction.CallbackContext ctx)
@@ -82,6 +107,7 @@ public class LogicScript : MonoBehaviour
     
     public void RestartGame()
     {
+        highScoreText.gameObject.SetActive(false);
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         AudioManager.Instance.MusicUnpause();
         isGameOver = false; 
@@ -130,6 +156,7 @@ public class LogicScript : MonoBehaviour
         {
             // PlayerPrefs.SetInt(key, playerScore);
             // PlayerPrefs.Save();
+            highScoreText.gameObject.SetActive(true);
             highScore = playerScore;
 
             if (!string.IsNullOrEmpty(userId))
