@@ -4,6 +4,9 @@ using Firebase.Firestore;
 using UnityEngine.UI;
 using Firebase.Extensions;
 using TMPro;
+using Firebase;
+using System.Threading.Tasks;
+using System;
 using System.Collections.Generic;
 
 public class AuthManager : MonoBehaviour
@@ -147,7 +150,10 @@ public class AuthManager : MonoBehaviour
                                 {"email", email},
                                 {"normalHighScore", 0},
                                 {"dailyHighScore", 0},
-                                {"totalRuns", 0}
+                                {"dailyHighScoreDate", DateTime.UtcNow.ToString("yyyyMMdd")},
+                                {"totalRuns", 0},
+                                {"dailyRankOnes", 0},
+                                {"normalMinutesRankedOne",0}
                             };
 
                             docRef.SetAsync(userData).ContinueWithOnMainThread(fireTask =>
@@ -207,5 +213,11 @@ public class AuthManager : MonoBehaviour
     {
         createAccountCanvas.SetActive(false);
     }
+
+    public string GetCurrentUserId()
+    {
+        return auth.CurrentUser != null ? auth.CurrentUser.UserId : null;
+    }
+
 
 }
