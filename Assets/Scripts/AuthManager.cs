@@ -1,11 +1,14 @@
 using UnityEngine;
 using Firebase.Auth;
+using Firebase.Firestore;
 using UnityEngine.UI;
 using Firebase.Extensions;
 using TMPro;
+using System.Collections.Generic;
 
 public class AuthManager : MonoBehaviour
 {
+    [SerializeField] private StartScreenScript startScreenScript;
     [SerializeField] private TMP_InputField emailInputS;
     [SerializeField] private TMP_InputField passwordInputS;
     [SerializeField] private Button signInButtonS;
@@ -22,6 +25,7 @@ public class AuthManager : MonoBehaviour
 
     
     private FirebaseAuth auth;
+    private FirebaseFirestore db;
     private bool isSignedIn = false;
 
     void Awake()
@@ -33,6 +37,7 @@ public class AuthManager : MonoBehaviour
             {
                 Debug.Log("Firebase ready!");
                 auth = FirebaseAuth.DefaultInstance;
+                db = FirebaseFirestore.DefaultInstance;
             }
             else
             {
@@ -48,6 +53,7 @@ public class AuthManager : MonoBehaviour
         createAccountButton.onClick.AddListener(CreateAccount);
         guestButton.onClick.AddListener(SignInAnonymously);
         closeButtonC.onClick.AddListener(CloseCreateAccount);
+        startScreenScript.CloseStartScreen();
         signInCanvas.SetActive(true);
         createAccountCanvas.SetActive(false);
     }
@@ -66,6 +72,12 @@ public class AuthManager : MonoBehaviour
         string email = emailInputS.text;
         string password = passwordInputS.text;
 
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        {
+            Debug.LogError("Please fill in all fields");
+            return;
+        }
+
         auth.SignInWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task =>
         {
             if (task.IsCanceled || task.IsFaulted)
@@ -76,7 +88,10 @@ public class AuthManager : MonoBehaviour
             {
                 Debug.Log("Signed In! User: " + auth.CurrentUser.UserId);
                 signInCanvas.SetActive(false); // hide pop-up
+                startScreenScript.OpenStartScreen();
                 isSignedIn = true;
+
+                LoadUsername(auth.CurrentUser.UserId); // Fetch username from Firestore
             }
         });
     }
@@ -88,24 +103,69 @@ public class AuthManager : MonoBehaviour
 
     void CreateAccount()
     {
+ 
         string email = emailInputC.text;
         string username = usernameInputC.text;
         string password = passwordInputC.text;
 
-        //make it so that each email and username can only be used once
-        auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task =>
+        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
         {
-            if (task.IsCanceled || task.IsFaulted)
+            Debug.LogError("Please fill in all fields");
+            return;
+        }
+
+        // Step 1: Check if username is already taken
+        db.Collection("users").WhereEqualTo("username", username).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.IsCompleted)
             {
-                Debug.LogError("Account Creation Failed: " + task.Exception);
-            }
-            else
-            {
-                Debug.Log("Account Created! User: " + auth.CurrentUser.UserId);
-                signInCanvas.SetActive(false);
-                createAccountCanvas.SetActive(false);
+                if (task.Result.Count > 0)
+                {
+                    Debug.LogError("Username already exists! Pick another one.");
+                    return;
+                }
+                else
+                {
+                    // Step 2: Create Firebase Auth user
+                    auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(authTask =>
+                    {
+                        if (authTask.IsCanceled || authTask.IsFaulted)
+                        {
+                            Debug.LogError("Account Creation Failed: " + authTask.Exception);
+                        }
+                        else
+                        {
+                            string uid = auth.CurrentUser.UserId;
+                            Debug.Log("Account Created! UID: " + uid);
+                            isSignedIn = true;
+
+                            // Step 3: Save username and initial stats to Firestore
+                            DocumentReference docRef = db.Collection("users").Document(uid);
+                            Dictionary<string, object> userData = new Dictionary<string, object>
+                            {
+                                {"username", username},
+                                {"email", email},
+                                {"normalHighScore", 0},
+                                {"dailyHighScore", 0},
+                                {"totalRuns", 0}
+                            };
+
+                            docRef.SetAsync(userData).ContinueWithOnMainThread(fireTask =>
+                            {
+                                if (fireTask.IsCompleted)
+                                {
+                                    Debug.Log("User Firestore record created!");
+                                    signInCanvas.SetActive(false);
+                                    createAccountCanvas.SetActive(false);
+                                    startScreenScript.OpenStartScreen();
+                                }
+                            });
+                        }
+                    });
+                }
             }
         });
+    
     }
 
     void SignInAnonymously()
@@ -120,6 +180,21 @@ public class AuthManager : MonoBehaviour
             {
                 Debug.Log("Signed In as Guest! User: " + auth.CurrentUser.UserId);
                 signInCanvas.SetActive(false);
+                startScreenScript.OpenStartScreen();
+            }
+        });
+    }
+
+     void LoadUsername(string uid)
+    {
+        DocumentReference docRef = db.Collection("users").Document(uid);
+        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
+        {
+            if (task.Result.Exists)
+            {
+                string username = task.Result.GetValue<string>("username");
+                Debug.Log("Welcome back, " + username);
+                // You can now display username in your UI
             }
         });
     }

@@ -8,10 +8,10 @@ public class StartScreenScript : MonoBehaviour
     [SerializeField] private float volume = 1f; //used to be public
 
     
-    public void Start()
-    {
-        OpenStartScreen();
-    }
+    // public void Start()
+    // {
+    //     OpenStartScreen();
+    // }
 
     public void OpenStartScreen()
     {
