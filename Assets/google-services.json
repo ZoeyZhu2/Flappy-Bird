@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "6478559634",
+    "project_id": "flappy-bird-ce77c",
+    "storage_bucket": "flappy-bird-ce77c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:6478559634:android:71a1ef8aa678b1b105e94b",
+        "android_client_info": {
+          "package_name": "com.fizlin.FlyTillYouDie"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "6478559634-hmf9orgbaqqu4sblh28sttkvat1kdpb0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSB1SQPS6Nf9sXExEDFNf8xGYzx9GBEYQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "6478559634-hmf9orgbaqqu4sblh28sttkvat1kdpb0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "6478559634-ljiqifg6e02hd96qinjnjk9jsidrd0e8.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.fizlin.FlyTillYouDie"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
