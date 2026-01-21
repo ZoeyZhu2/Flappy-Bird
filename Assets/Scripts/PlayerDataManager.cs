@@ -1,0 +1,125 @@
+//save/load player data
+
+using UnityEngine;
+using Firebase.Firestore;
+using Firebase.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
+[Serializable]
+public class PlayerProfile
+{
+    public string username;
+    public string email;
+
+    public int normalHighScore = 0;
+    public int dailyHighScore = 0;
+    public string dailyHighScoreDate = "";
+
+    public int totalRuns = 0;
+    public int totalPipes = 0;
+}
+
+public class PlayerDataManager : MonoBehaviour
+{
+    public static PlayerDataManager Instance;
+
+    FirebaseFirestore db;
+    string uid;
+
+    public PlayerProfile Profile { get; private set; }
+
+    void Awake()
+    {
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        db = FirebaseFirestore.DefaultInstance;
+    }
+
+    public async Task CreateNewUser(string username, string email)
+    {
+        uid = AuthManager.Instance.User.UserId;
+
+        Profile = new PlayerProfile
+        {
+            username = username,
+            email = email,
+            dailyHighScoreDate = DateTime.UtcNow.ToString("yyyyMMdd")
+        };
+
+        await SaveProfile();
+    }
+
+    public async Task LoadOrCreateUser()
+    {
+        uid = AuthManager.Instance.User.UserId;
+
+        DocumentReference doc = db.Collection("users").Document(uid);
+        var snap = await doc.GetSnapshotAsync();
+
+        if (!snap.Exists)
+        {
+            Profile = new PlayerProfile();
+            await SaveProfile();
+        }
+        else
+        {
+            Profile = snap.ConvertTo<PlayerProfile>();
+        }
+    }
+
+    public async Task SaveProfile()
+    {
+        await db.Collection("users").Document(uid).SetAsync(Profile);
+    }
+
+    public void AddRun()
+    {
+        if (Profile == null) return;
+
+        Profile.totalRuns++;
+        _ = SaveProfile();
+    }
+
+    public void AddPipe()
+    {
+        if (Profile == null) return;
+
+        Profile.totalPipes++;
+        _ = SaveProfile();
+    }
+
+    public void TryUpdateHighScore(int score, bool isDaily)
+    {
+        if (Profile == null) return;
+
+        if (isDaily)
+        {
+            string today = DateTime.UtcNow.ToString("yyyyMMdd");
+
+            if (Profile.dailyHighScoreDate != today)
+            {
+                Profile.dailyHighScore = 0;
+                Profile.dailyHighScoreDate = today;
+            }
+
+            if (score > Profile.dailyHighScore)
+                Profile.dailyHighScore = score;
+        }
+        else
+        {
+            if (score > Profile.normalHighScore)
+                Profile.normalHighScore = score;
+        }
+
+        _ = SaveProfile();
+    }
+}

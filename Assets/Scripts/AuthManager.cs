@@ -1,223 +1,80 @@
+//login / logout / account creation
+
 using UnityEngine;
-using Firebase.Auth;
-using Firebase.Firestore;
-using UnityEngine.UI;
-using Firebase.Extensions;
-using TMPro;
 using Firebase;
+using Firebase.Auth;
+using Firebase.Extensions;
 using System.Threading.Tasks;
-using System;
-using System.Collections.Generic;
 
 public class AuthManager : MonoBehaviour
 {
-    [SerializeField] private StartScreenScript startScreenScript;
-    [SerializeField] private TMP_InputField emailInputS;
-    [SerializeField] private TMP_InputField passwordInputS;
-    [SerializeField] private Button signInButtonS;
-    [SerializeField] private Button openCreateAccount;
-    [SerializeField] private Button guestButton;
-    [SerializeField] private GameObject signInCanvas;
+    public static AuthManager Instance;
 
-    [SerializeField] private GameObject createAccountCanvas;
-    [SerializeField] private Button closeButtonC;
-    [SerializeField] private TMP_InputField emailInputC;
-    [SerializeField] private TMP_InputField usernameInputC;
-    [SerializeField] private TMP_InputField passwordInputC;
-    [SerializeField] private Button createAccountButton;
+    public FirebaseAuth Auth { get; private set; }
+    public FirebaseUser User => Auth?.CurrentUser;
 
-    
-    private FirebaseAuth auth;
-    private FirebaseFirestore db;
-    private bool isSignedIn = false;
+    public bool IsSignedIn => User != null;
+    public bool IsGuest => User != null && User.IsAnonymous;
 
     void Awake()
     {
-        DontDestroyOnLoad(this.gameObject);
+        // Singleton (only one survives across scenes)
+        if (Instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+
+        // Initialize Firebase
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
         {
-            if (task.Result == DependencyStatus.Available)
-            {
-                Debug.Log("Firebase ready!");
-                auth = FirebaseAuth.DefaultInstance;
-                db = FirebaseFirestore.DefaultInstance;
-            }
-            else
-            {
-                Debug.LogError("Could not resolve Firebase dependencies: " + task.Result);
-            }
+            Auth = FirebaseAuth.DefaultInstance;
+            Debug.Log("Firebase Auth ready.");
         });
     }
 
-    void OnEnable()
+    public async Task<bool> SignIn(string email, string password)
     {
-        signInButtonS.onClick.AddListener(SignIn);
-        openCreateAccount.onClick.AddListener(OpenCreateAccount);
-        createAccountButton.onClick.AddListener(CreateAccount);
-        guestButton.onClick.AddListener(SignInAnonymously);
-        closeButtonC.onClick.AddListener(CloseCreateAccount);
-        startScreenScript.CloseStartScreen();
-        signInCanvas.SetActive(true);
-        createAccountCanvas.SetActive(false);
-    }
-
-    void OnDisable()
-    {
-        signInButtonS.onClick.RemoveListener(SignIn);
-        openCreateAccount.onClick.RemoveListener(OpenCreateAccount);
-        createAccountButton.onClick.RemoveListener(CreateAccount);
-        guestButton.onClick.RemoveListener(SignInAnonymously);
-        closeButtonC.onClick.RemoveListener(CloseCreateAccount);
-    }
-
-    void SignIn()
-    {
-        string email = emailInputS.text;
-        string password = passwordInputS.text;
-
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
+        try
         {
-            Debug.LogError("Please fill in all fields");
-            return;
+            await Auth.SignInWithEmailAndPasswordAsync(email, password);
+            await PlayerDataManager.Instance.LoadOrCreateUser();
+            return true;
         }
-
-        auth.SignInWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(task =>
+        catch
         {
-            if (task.IsCanceled || task.IsFaulted)
-            {
-                Debug.LogError("Sign In Failed: " + task.Exception);
-            }
-            else
-            {
-                Debug.Log("Signed In! User: " + auth.CurrentUser.UserId);
-                signInCanvas.SetActive(false); // hide pop-up
-                startScreenScript.OpenStartScreen();
-                isSignedIn = true;
-
-                LoadUsername(auth.CurrentUser.UserId); // Fetch username from Firestore
-            }
-        });
-    }
-
-    public bool GetIsSignedIn()
-    {
-        return isSignedIn;
-    }
-
-    void CreateAccount()
-    {
- 
-        string email = emailInputC.text;
-        string username = usernameInputC.text;
-        string password = passwordInputC.text;
-
-        if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(username) || string.IsNullOrEmpty(password))
-        {
-            Debug.LogError("Please fill in all fields");
-            return;
+            return false;
         }
+    }
 
-        // Step 1: Check if username is already taken
-        db.Collection("users").WhereEqualTo("username", username).GetSnapshotAsync().ContinueWithOnMainThread(task =>
+    public async Task<bool> CreateAccount(string email, string password, string username)
+    {
+        try
         {
-            if (task.IsCompleted)
-            {
-                if (task.Result.Count > 0)
-                {
-                    Debug.LogError("Username already exists! Pick another one.");
-                    return;
-                }
-                else
-                {
-                    // Step 2: Create Firebase Auth user
-                    auth.CreateUserWithEmailAndPasswordAsync(email, password).ContinueWithOnMainThread(authTask =>
-                    {
-                        if (authTask.IsCanceled || authTask.IsFaulted)
-                        {
-                            Debug.LogError("Account Creation Failed: " + authTask.Exception);
-                        }
-                        else
-                        {
-                            string uid = auth.CurrentUser.UserId;
-                            Debug.Log("Account Created! UID: " + uid);
-                            isSignedIn = true;
+            await Auth.CreateUserWithEmailAndPasswordAsync(email, password);
 
-                            // Step 3: Save username and initial stats to Firestore
-                            DocumentReference docRef = db.Collection("users").Document(uid);
-                            Dictionary<string, object> userData = new Dictionary<string, object>
-                            {
-                                {"username", username},
-                                {"email", email},
-                                {"normalHighScore", 0},
-                                {"dailyHighScore", 0},
-                                {"dailyHighScoreDate", DateTime.UtcNow.ToString("yyyyMMdd")},
-                                {"totalRuns", 0},
-                                {"dailyRankOnes", 0},
-                                {"normalMinutesRankedOne",0}
-                            };
+            await User.SendEmailVerificationAsync();
 
-                            docRef.SetAsync(userData).ContinueWithOnMainThread(fireTask =>
-                            {
-                                if (fireTask.IsCompleted)
-                                {
-                                    Debug.Log("User Firestore record created!");
-                                    signInCanvas.SetActive(false);
-                                    createAccountCanvas.SetActive(false);
-                                    startScreenScript.OpenStartScreen();
-                                }
-                            });
-                        }
-                    });
-                }
-            }
-        });
-    
-    }
+            await PlayerDataManager.Instance.CreateNewUser(username, email);
 
-    void SignInAnonymously()
-    {
-        auth.SignInAnonymouslyAsync().ContinueWithOnMainThread(task =>
+            return true;
+        }
+        catch
         {
-            if (task.IsCanceled || task.IsFaulted)
-            {
-                Debug.LogError("Guest Sign In Failed: " + task.Exception);
-            }
-            else
-            {
-                Debug.Log("Signed In as Guest! User: " + auth.CurrentUser.UserId);
-                signInCanvas.SetActive(false);
-                startScreenScript.OpenStartScreen();
-            }
-        });
+            return false;
+        }
     }
 
-     void LoadUsername(string uid)
+    public async Task GuestLogin()
     {
-        DocumentReference docRef = db.Collection("users").Document(uid);
-        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.Result.Exists)
-            {
-                string username = task.Result.GetValue<string>("username");
-                Debug.Log("Welcome back, " + username);
-                // You can now display username in your UI
-            }
-        });
+        await Auth.SignInAnonymouslyAsync();
     }
 
-    void OpenCreateAccount()
+    public void SignOut()
     {
-        createAccountCanvas.SetActive(true);
+        Auth.SignOut();
     }
-    void CloseCreateAccount()
-    {
-        createAccountCanvas.SetActive(false);
-    }
-
-    public string GetCurrentUserId()
-    {
-        return auth.CurrentUser != null ? auth.CurrentUser.UserId : null;
-    }
-
-
 }

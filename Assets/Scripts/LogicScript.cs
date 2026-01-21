@@ -1,338 +1,206 @@
+//gameplay and UI only
+
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
-using System;
-using Firebase.Auth;
-using Firebase.Firestore;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using Firebase;
-using Firebase.Extensions;
 using TMPro;
 
 public class LogicScript : MonoBehaviour
 {
     private int playerScore;
-    [SerializeField] private Text scoreText; //used to be public
-    [SerializeField] private GameObject gameOverScreen; //used to be public
     private int highScore;
-    [SerializeField] private Text highScoreText; //used to be public
-    // private string key;
-    private PlayerInputActions inputActions;
     private bool isGameOver = false;
-    [SerializeField] private AudioClip pressSound;
-    [SerializeField] private float volume = 1f; //used to be public
-    [SerializeField] private AuthManager authManager;
-    private FirebaseFirestore db;
-    private string userId;
 
-    //new high score stuff
+    private PlayerInputActions inputActions;
+
+    [Header("UI")]
+    [SerializeField] private Text scoreText;
+    [SerializeField] private Text highScoreText;
+    [SerializeField] private GameObject gameOverScreen;
     [SerializeField] private TMP_Text newHighScore;
 
+    [Header("Guest UI")]
     [SerializeField] private Button openCreateAccount;
-    [SerializeField] private Button skipButton;
     [SerializeField] private Button openSignIn;
+    [SerializeField] private Button skipButton;
 
-    //create account pop up
+    [Header("Create Account")]
     [SerializeField] private GameObject createAccountCanvas;
     [SerializeField] private TMP_InputField emailInputC;
     [SerializeField] private TMP_InputField passwordInputC;
     [SerializeField] private TMP_InputField usernameInputC;
     [SerializeField] private Button createAccountButton;
+    [SerializeField] private Button closeCreateAccountButton;
 
-    //sign in pop up
-
+    [Header("Sign In")]
     [SerializeField] private GameObject signInCanvas;
     [SerializeField] private TMP_InputField emailInputS;
     [SerializeField] private TMP_InputField passwordInputS;
     [SerializeField] private Button signInButton;
+    [SerializeField] private Button closeSignInButton;
 
+    [Header("Audio")]
+    [SerializeField] private AudioClip pressSound;
+    [SerializeField] private float volume = 1f;
 
     void Awake()
     {
-        // key = GetHighScoreKey();
         inputActions = InputManager.inputActions;
-        db = FirebaseFirestore.DefaultInstance;
-        newHighScore.text = "New High Score!";
-        newHighScore.gameObject.SetActive(false);
+
+        gameOverScreen.SetActive(false);
+        createAccountCanvas.SetActive(false);
+        signInCanvas.SetActive(false);
+
         openCreateAccount.gameObject.SetActive(false);
         openSignIn.gameObject.SetActive(false);
         skipButton.gameObject.SetActive(false);
-        createAccountCanvas.SetActive(false);
-        signInCanvas.SetActive(false);
+
+        newHighScore.gameObject.SetActive(false);
     }
 
     void OnEnable()
     {
-        if (inputActions != null)
-        {
-            inputActions.UI.PlayAgain.performed += OnPlayAgain;
-            inputActions.UI.PlayAgain.Enable();
-        }
-        openCreateAccount.onClick.AddListener(ShowCreateAccount);
-        skipButton.onClick.AddListener(Skip);
-        openSignIn.onClick.AddListener(ShowSignIn);
-        createAccountButton.onClick.AddListener(authManager.CreateAccount);
-        signInButton.onClick.AddListener(authManager.SignIn);
+        inputActions.UI.PlayAgain.performed += OnPlayAgain;
+        inputActions.UI.PlayAgain.Enable();
 
+        openCreateAccount.onClick.AddListener(ShowCreateAccount);
+        openSignIn.onClick.AddListener(ShowSignIn);
+        skipButton.onClick.AddListener(RestartGame);
+
+        createAccountButton.onClick.AddListener(CreateAccount);
+        signInButton.onClick.AddListener(SignIn);
+
+        closeCreateAccountButton.onClick.AddListener(() => createAccountCanvas.SetActive(false));
+        closeSignInButton.onClick.AddListener(() => signInCanvas.SetActive(false));
     }
 
     void OnDisable()
     {
-        if (inputActions != null)
-        {
-            inputActions.UI.PlayAgain.performed -= OnPlayAgain;
-            inputActions.UI.PlayAgain.Disable();
-        }
-        createAccountButton.onClick.RemoveListener(ShowCreateAccount);
-        skipButton.onClick.RemoveListener(Skip);
-        signInButton.onClick.RemoveListener(ShowSignIn);
-        createAccountButton.onClick.RemoveListener(authManager.CreateAccount);
-        signInButton.onClick.RemoveListener(authManager.SignIn);
+        inputActions.UI.PlayAgain.performed -= OnPlayAgain;
+
+        openCreateAccount.onClick.RemoveAllListeners();
+        openSignIn.onClick.RemoveAllListeners();
+        skipButton.onClick.RemoveAllListeners();
+        createAccountButton.onClick.RemoveAllListeners();
+        signInButton.onClick.RemoveAllListeners();
     }
 
-    private void OnPlayAgain(InputAction.CallbackContext ctx)
+    void Start()
     {
-        if (isGameOver && ctx.performed)
+        playerScore = 0;
+        scoreText.text = $"Current Score: {playerScore}";
+
+        if (AuthManager.Instance.IsSignedIn)
         {
-            RestartGame();
+            LoadHighScoreFromProfile();
         }
     }
 
-    private string GetHighScoreKey()
+    public void AddScore(int amount)
     {
-        if (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed)
-        {
-            // Unique key for each day
-            // return "DailyHighScore_" + DateTime.UtcNow.ToString("yyyyMMdd");
-            return "dailyHighScore";
-        }
-        else
-        {
-            // Normal mode uses a fixed key
-            // return "NormalHighScore";
-            return "normalHighScore";
-        }
-    }
-    public void AddScore(int scoreToAdd)
-    {
-        playerScore = playerScore + scoreToAdd;
-        scoreText.text = "Current Score: " + playerScore.ToString();
-    }
-    
-    public void RestartGame()
-    {
-        // createAccountCanvas.SetActive(false);
-        // signInCanvas.SetActive(false);
-        // highScoreText.gameObject.SetActive(false);
-        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
-        AudioManager.Instance.MusicUnpause();
-        isGameOver = false; 
-        inputActions.UI.PlayAgain.Disable();
-        inputActions.UI.Pause.Enable();
-        inputActions.Player.Enable();
-        Time.timeScale = 1f;
-        //restarts scene again (so Start() is called again)
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        playerScore += amount;
+        scoreText.text = $"Current Score: {playerScore}";
     }
 
     public void GameOver()
     {
         isGameOver = true;
         gameOverScreen.SetActive(true);
-        
+
         AudioManager.Instance.MusicPause();
-        
-
-
         Time.timeScale = 0f;
+
         inputActions.Player.Disable();
         inputActions.UI.Pause.Disable();
         inputActions.UI.PlayAgain.Enable();
 
+        PlayerDataManager.Instance.AddRun();
 
-        //no game mode version
-        /*
-        if (playerScore > highScore)
+        bool isDaily = GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed;
+
+        if (AuthManager.Instance.IsSignedIn)
         {
-            highScore = playerScore;
-            PlayerPrefs.SetInt("HighScore", highScore);
-            PlayerPrefs.Save();
-        }
-
-        highScoreText.text = "High Score: " + highScore.ToString();
-        */
-
-        //game mode version
-        // highScore = PlayerPrefs.GetInt(key, 0);
-
-        AddOneRun();
-
-
-        if (playerScore > highScore)
-        {
-            // PlayerPrefs.SetInt(key, playerScore);
-            // PlayerPrefs.Save();
-            highScoreText.gameObject.SetActive(true);
-            highScore = playerScore;
-
-            if (!string.IsNullOrEmpty(userId))
-            {
-                string key = GetHighScoreKey();
-                DocumentReference docRef = db.Collection("users").Document(userId);
-                Dictionary<string, object> update = new Dictionary<string, object>
-                {
-                    { key, highScore }
-                };
-                if (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed)
-                {
-                    update["dailyHighScoreDate"] = DateTime.UtcNow.ToString("yyyyMMdd");
-                }
-                docRef.SetAsync(update, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
-                {
-                    if (task.IsCompleted)
-                    {
-                        Debug.Log("High score updated in Firestore: " + highScore);
-                    }
-                    else
-                    {
-                        Debug.LogError("Failed to update high score: " + task.Exception);
-                    }
-                });
-            }
-            else
-            {
-                createAccountButton.gameObject.SetActive(false);
-                signInButton.gameObject.SetActive(false);
-            }
-        }
-        highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
-    }
-
-    void Start()
-    {
-        gameOverScreen.SetActive(false);
-        createAccountCanvas.SetActive(false);
-        signInCanvas.SetActive(false);
-        highScoreText.gameObject.SetActive(false);
-
-        // if (AudioManager.Instance != null) 
-        // { 
-        //     AudioManager.Instance.PlayGameMusic(); 
-        // } 
-        // else 
-        // { 
-        //     Debug.LogWarning("AudioManager or startScreenMusic is not assigned!"); 
-        // }
-        
-        playerScore = 0;
-        scoreText.text = "Current Score: " + playerScore.ToString();
-
-        //no game mode version
-        /*
-        highScore = PlayerPrefs.GetInt("HighScore", 0);
-        highScoreText.text = "High Score: " + highScore.ToString();
-        */
-
-        //game mode version
-        // highScore = PlayerPrefs.GetInt(key, 0); //0 is the alternative value if no value for key is found
-        // highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
-
-        if (authManager.GetIsSignedIn())
-        {
-            userId = authManager.GetCurrentUserId(); // we’ll make a getter in AuthManager
+            PlayerDataManager.Instance.TryUpdateHighScore(playerScore, isDaily);
         }
         else
         {
-            userId = null; // guest, optional: skip saving high score
+            openCreateAccount.gameObject.SetActive(true);
+            openSignIn.gameObject.SetActive(true);
+            skipButton.gameObject.SetActive(true);
         }
 
-        // Load high score from Firestore
-        LoadHighScore();
-
+        highScore = GetCurrentHighScore(isDaily);
+        highScoreText.text = (isDaily ? "Daily High Score: " : "High Score: ") + highScore;
     }
 
-    private void LoadHighScore()
+    private int GetCurrentHighScore(bool isDaily)
     {
-        //I want daily highscore to reset every 24 hours UTC
-        if (string.IsNullOrEmpty(userId)) return; // guest
+        var profile = PlayerDataManager.Instance.Profile;
+        if (profile == null) return 0;
 
-        DocumentReference docRef = db.Collection("users").Document(userId);
-
-        docRef.GetSnapshotAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.IsCompleted && task.Result.Exists)
-            {
-                if (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed)
-                {
-                    string today = DateTime.UtcNow.ToString("yyyyMMdd");
-                    string lastDate = task.Result.ContainsField("dailyHighScoreDate") 
-                    ? task.Result.GetValue<string>("dailyHighScoreDate") 
-                    : "";
-                    if (lastDate != today)
-                    {
-                        // Reset daily score
-                        docRef.UpdateAsync(new Dictionary<string, object>
-                        {
-                            {"dailyHighScore", 0},
-                            {"dailyHighScoreDate", today}
-                        });
-                        highScore = 0;
-                    }
-                    else
-                    {
-                        highScore = (int)task.Result.GetValue<long>("dailyHighScore");
-                    }
-                }
-                else
-                {
-                    highScore = (int)task.Result.GetValue<long>("normalHighScore");
-                }
-
-                highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
-            }
-            else
-            {
-                Debug.LogWarning("Failed to load high score or document missing");
-                highScore = 0;
-                highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
-            }
-        });
+        return isDaily ? profile.dailyHighScore : profile.normalHighScore;
     }
 
-    private void AddOneRun()
+    private void LoadHighScoreFromProfile()
     {
-        if (!string.IsNullOrEmpty(userId))
+        bool isDaily = GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed;
+        highScore = GetCurrentHighScore(isDaily);
+        highScoreText.text = (isDaily ? "Daily High Score: " : "High Score: ") + highScore;
+    }
+
+    public void RestartGame()
+    {
+        AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
+        AudioManager.Instance.MusicUnpause();
+
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    private async void CreateAccount()
+    {
+        bool success = await AuthManager.Instance.CreateAccount(
+            emailInputC.text,
+            passwordInputC.text,
+            usernameInputC.text
+        );
+
+        if (success)
         {
-            DocumentReference docRef = db.Collection("users").Document(userId);
-            Dictionary<string, object> update = new Dictionary<string, object>
-            {
-                { "totalRuns", FieldValue.Increment(1) }
-            };
-            docRef.SetAsync(update, SetOptions.MergeAll).ContinueWithOnMainThread(task =>
-            {
-                if (task.IsCompleted)
-                    Debug.Log("Total runs incremented.");
-                else
-                    Debug.LogError("Failed to increment total runs: " + task.Exception);
-            });
+            createAccountCanvas.SetActive(false);
+            openCreateAccount.gameObject.SetActive(false);
+            openSignIn.gameObject.SetActive(false);
+            skipButton.gameObject.SetActive(false);
+
+            LoadHighScoreFromProfile();
         }
     }
 
-    private void ShowCreateAccount()
+    private async void SignIn()
     {
-        createAccountCanvas.SetActive(true);
+        bool success = await AuthManager.Instance.SignIn(
+            emailInputS.text,
+            passwordInputS.text
+        );
+
+        if (success)
+        {
+            signInCanvas.SetActive(false);
+            openCreateAccount.gameObject.SetActive(false);
+            openSignIn.gameObject.SetActive(false);
+            skipButton.gameObject.SetActive(false);
+
+            LoadHighScoreFromProfile();
+        }
     }
 
-    private void Skip()
-    {
-        RestartGame();
-    }
-    
-    private void ShowSignIn()
-    {
-        signInCanvas.SetActive(true);
-    }
+    private void ShowCreateAccount() => createAccountCanvas.SetActive(true);
+    private void ShowSignIn() => signInCanvas.SetActive(true);
 
+    private void OnPlayAgain(InputAction.CallbackContext ctx)
+    {
+        if (isGameOver && ctx.performed)
+            RestartGame();
+    }
 }
