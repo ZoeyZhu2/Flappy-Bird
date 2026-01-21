@@ -26,16 +26,27 @@ public class LogicScript : MonoBehaviour
     [SerializeField] private AuthManager authManager;
     private FirebaseFirestore db;
     private string userId;
+
+    //new high score stuff
     [SerializeField] private TMP_Text newHighScore;
 
+    [SerializeField] private Button openCreateAccount;
+    [SerializeField] private Button skipButton;
+    [SerializeField] private Button openSignIn;
+
+    //create account pop up
     [SerializeField] private GameObject createAccountCanvas;
     [SerializeField] private TMP_InputField emailInputC;
     [SerializeField] private TMP_InputField passwordInputC;
     [SerializeField] private TMP_InputField usernameInputC;
     [SerializeField] private Button createAccountButton;
-    [SerializeField] private Button skipButton;
-    [SerializeField] private Button signInButton;
 
+    //sign in pop up
+
+    [SerializeField] private GameObject signInCanvas;
+    [SerializeField] private TMP_InputField emailInputS;
+    [SerializeField] private TMP_InputField passwordInputS;
+    [SerializeField] private Button signInButton;
 
 
     void Awake()
@@ -45,10 +56,11 @@ public class LogicScript : MonoBehaviour
         db = FirebaseFirestore.DefaultInstance;
         newHighScore.text = "New High Score!";
         newHighScore.gameObject.SetActive(false);
-        createAccountButton.gameObject.SetActive(false);
-        signInButton.gameObject.SetActive(false);
+        openCreateAccount.gameObject.SetActive(false);
+        openSignIn.gameObject.SetActive(false);
         skipButton.gameObject.SetActive(false);
         createAccountCanvas.SetActive(false);
+        signInCanvas.SetActive(false);
     }
 
     void OnEnable()
@@ -58,9 +70,11 @@ public class LogicScript : MonoBehaviour
             inputActions.UI.PlayAgain.performed += OnPlayAgain;
             inputActions.UI.PlayAgain.Enable();
         }
-        createAccountButton.onClick.AddListener(ShowCreateAccount);
+        openCreateAccount.onClick.AddListener(ShowCreateAccount);
         skipButton.onClick.AddListener(Skip);
-        signInButton.onClick.AddListener(ShowSignIn);
+        openSignIn.onClick.AddListener(ShowSignIn);
+        createAccountButton.onClick.AddListener(authManager.CreateAccount);
+        signInButton.onClick.AddListener(authManager.SignIn);
 
     }
 
@@ -74,6 +88,8 @@ public class LogicScript : MonoBehaviour
         createAccountButton.onClick.RemoveListener(ShowCreateAccount);
         skipButton.onClick.RemoveListener(Skip);
         signInButton.onClick.RemoveListener(ShowSignIn);
+        createAccountButton.onClick.RemoveListener(authManager.CreateAccount);
+        signInButton.onClick.RemoveListener(authManager.SignIn);
     }
 
     private void OnPlayAgain(InputAction.CallbackContext ctx)
@@ -107,7 +123,9 @@ public class LogicScript : MonoBehaviour
     
     public void RestartGame()
     {
-        highScoreText.gameObject.SetActive(false);
+        // createAccountCanvas.SetActive(false);
+        // signInCanvas.SetActive(false);
+        // highScoreText.gameObject.SetActive(false);
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         AudioManager.Instance.MusicUnpause();
         isGameOver = false; 
@@ -183,6 +201,11 @@ public class LogicScript : MonoBehaviour
                     }
                 });
             }
+            else
+            {
+                createAccountButton.gameObject.SetActive(false);
+                signInButton.gameObject.SetActive(false);
+            }
         }
         highScoreText.text = (GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed ? "Daily High Score: " : "High Score: ") + highScore;
     }
@@ -190,6 +213,9 @@ public class LogicScript : MonoBehaviour
     void Start()
     {
         gameOverScreen.SetActive(false);
+        createAccountCanvas.SetActive(false);
+        signInCanvas.SetActive(false);
+        highScoreText.gameObject.SetActive(false);
 
         // if (AudioManager.Instance != null) 
         // { 
@@ -294,5 +320,19 @@ public class LogicScript : MonoBehaviour
         }
     }
 
+    private void ShowCreateAccount()
+    {
+        createAccountCanvas.SetActive(true);
+    }
+
+    private void Skip()
+    {
+        RestartGame();
+    }
+    
+    private void ShowSignIn()
+    {
+        signInCanvas.SetActive(true);
+    }
 
 }
