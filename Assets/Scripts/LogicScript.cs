@@ -5,6 +5,7 @@ using UnityEngine.UI;
 using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 using TMPro;
+using System.Collections;
 
 public class LogicScript : MonoBehaviour
 {
@@ -19,6 +20,8 @@ public class LogicScript : MonoBehaviour
     [SerializeField] private Text highScoreText;
     [SerializeField] private GameObject gameOverScreen;
     [SerializeField] private TMP_Text newHighScore;
+    [SerializeField] private TMP_Text verifyEmailWarning;
+    [SerializeField] private Button resendEmailButton;
 
     [Header("Guest UI")]
     [SerializeField] private Button openCreateAccount;
@@ -57,6 +60,10 @@ public class LogicScript : MonoBehaviour
         skipButton.gameObject.SetActive(false);
 
         newHighScore.gameObject.SetActive(false);
+        verifyEmailWarning.gameObject.SetActive(false);
+        resendEmailButton.gameObject.SetActive(false);
+
+        verifyEmailWarning.text = "Verify Email to save score to leaderboard!";
     }
 
     void OnEnable()
@@ -73,6 +80,8 @@ public class LogicScript : MonoBehaviour
 
         closeCreateAccountButton.onClick.AddListener(() => createAccountCanvas.SetActive(false));
         closeSignInButton.onClick.AddListener(() => signInCanvas.SetActive(false));
+
+        resendEmailButton.onClick.AddListener(ResendEmail);
     }
 
     void OnDisable()
@@ -94,6 +103,10 @@ public class LogicScript : MonoBehaviour
         if (AuthManager.Instance.IsSignedIn)
         {
             LoadHighScoreFromProfile();
+        }
+        else
+        {
+            highScoreText.text= "High Score: 0";
         }
     }
 
@@ -122,6 +135,11 @@ public class LogicScript : MonoBehaviour
         if (AuthManager.Instance.IsSignedIn)
         {
             PlayerDataManager.Instance.TryUpdateHighScore(playerScore, isDaily);
+        }
+        else if (AuthManager.Instance.IsSignedIn && !AuthManager.Instance.IsEmailVerified)
+        {
+            verifyEmailWarning.gameObject.SetActive(true);
+            resendEmailButton.gameObject.SetActive(true);
         }
         else
         {
@@ -202,5 +220,19 @@ public class LogicScript : MonoBehaviour
     {
         if (isGameOver && ctx.performed)
             RestartGame();
+    }
+
+    private async void ResendEmail()
+    {
+        await AuthManager.Instance.ResendVerificationEmail();
+
+        verifyEmailWarning.text = "Verification Email Sent!";
+        StartCoroutine(WaitThreeSeconds());
+        verifyEmailWarning.text = "Verify Email to save score to leaderboard!";
+    }
+
+    IEnumerator WaitThreeSeconds()
+    {
+        yield return new WaitForSecondsRealtime(3);
     }
 }

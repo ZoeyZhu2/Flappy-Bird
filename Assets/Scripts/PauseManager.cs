@@ -18,6 +18,8 @@ public class PauseManager : MonoBehaviour
     [SerializeField] private Button quitButton;
     [SerializeField] private TMP_Text quitButtonText;
 
+    [SerializeField] private Button signOutButton;
+
     [SerializeField] private LogicScript logicScript;
 
     void Awake()
@@ -36,6 +38,7 @@ public class PauseManager : MonoBehaviour
             quitButtonText.text = "Restart Game";
         #endif
         // SceneManager.sceneLoaded += OnSceneLoaded;
+        signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
     }
 
     void OnDisable()
@@ -46,6 +49,7 @@ public class PauseManager : MonoBehaviour
             inputActions.UI.Pause.Disable();
         }
         // SceneManager.sceneLoaded -= OnSceneLoaded;
+        signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
     }
 
     // private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -130,7 +134,11 @@ public class PauseManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        
+        // Ensure quitButtonText has a font asset assigned
+        if (quitButtonText != null && quitButtonText.font == null)
+        {
+            quitButtonText.font = TMP_Settings.defaultFontAsset;
+        }
     }
 
     // Update is called once per frame

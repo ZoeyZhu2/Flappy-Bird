@@ -1,37 +1,129 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using TMPro;
+using UnityEngine.UI;
+
 
 public class StartScreenUIManager : MonoBehaviour
 {
-    [Header("Start Screen")]
-    [SerializeField] private GameObject startScreen; //used to be public
+    //Start Screen
+    [SerializeField] private GameObject startScreen;
+    [SerializeField] private Button normalButton;
+    [SerializeField] private Button dailyButton;
+    [SerializeField] private Button signOutButton;
+    [SerializeField] private Button quitButton;
 
-    [Header("Audio")]
+    //Audio
     [SerializeField] private AudioClip pressSound;
     [SerializeField] private float volume = 1f; //used to be public
 
-    [Header("Sign in UI")]
-    //something
+    //Sign in UI
+    [SerializeField] private GameObject signInCanvas;
+    [SerializeField] private TMP_InputField emailInputS;
+    [SerializeField] private TMP_InputField passwordInputS;
+    [SerializeField] private Button signInButton;
+    [SerializeField] private Button openCreateAccount;
+    [SerializeField] private Button guestButton;
 
-    [Header("Create Account pop up UI")]
-    //something
+
+    //Create Account pop up UI"
+    [SerializeField] private GameObject createAccountCanvas;
+    [SerializeField] private TMP_InputField emailInputC;
+    [SerializeField] private TMP_InputField passwordInputC;
+    [SerializeField] private TMP_InputField usernameInputC;
+    [SerializeField] private Button createAccountButton;
+    [SerializeField] private Button closeCreateAccountButton;
+
 
     public void Start()
     {
         OpenSignInScreen();
+        CloseStartScreen();
     }
 
-    public void OpenSignInScreen()
+    void OnEnable()
     {
-        //something
+        signInButton.onClick.AddListener(SignIn);
+        openCreateAccount.onClick.AddListener(ShowCreateAccount);
+        guestButton.onClick.AddListener(PlayAsGuest);
+        createAccountButton.onClick.AddListener(CreateAccount);
+        closeCreateAccountButton.onClick.AddListener(CloseCreateAccount);
+
+        normalButton.onClick.AddListener(PlayNormal);
+        dailyButton.onClick.AddListener(PlayDaily);
+        signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
+        quitButton.onClick.AddListener(QuitGame);
     }
 
-    public void CloseSignInScreen()
+    void OnDisable()
     {
-        //something
+        signInButton.onClick.RemoveListener(SignIn);
+        openCreateAccount.onClick.RemoveListener(ShowCreateAccount);
+        guestButton.onClick.RemoveListener(PlayAsGuest);
+        createAccountButton.onClick.RemoveListener(CreateAccount);
+        closeCreateAccountButton.onClick.RemoveListener(CloseCreateAccount);
+
+        normalButton.onClick.RemoveListener(PlayNormal);
+        dailyButton.onClick.RemoveListener(PlayDaily);
+        signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
+        quitButton.onClick.RemoveListener(QuitGame);
     }
 
-    public void OpenStartScreen()
+    private async void SignIn()
+    {
+        bool success = await AuthManager.Instance.SignIn(
+            emailInputS.text,
+            passwordInputS.text
+        );
+
+        if (success)
+        {
+            CloseSignInScreen();
+            OpenStartScreen();
+        }
+    }
+
+    private async void CreateAccount()
+    {
+        bool success = await AuthManager.Instance.CreateAccount(
+            emailInputC.text,
+            passwordInputC.text,
+            usernameInputC.text
+        );
+
+        if (success)
+        {
+            CloseCreateAccount();
+            CloseSignInScreen();
+            OpenStartScreen();
+        }
+    }
+
+    private async void PlayAsGuest()
+    {
+        await AuthManager.Instance.GuestLogin();
+    }
+    private void ShowCreateAccount()
+    {
+        createAccountCanvas.SetActive(true);
+    }
+
+    private void CloseCreateAccount()
+    {
+        createAccountCanvas.SetActive(false);
+    }
+
+    private void OpenSignInScreen()
+    {
+        signInCanvas.SetActive(true);
+    }
+
+    private void CloseSignInScreen()
+    {
+        signInCanvas.SetActive(false);
+    }
+
+    private void OpenStartScreen()
     {
         
         startScreen.SetActive(true);
@@ -48,12 +140,12 @@ public class StartScreenUIManager : MonoBehaviour
 
 
 
-    public void CloseStartScreen()
+    private void CloseStartScreen()
     {
         startScreen.SetActive(false);
     }
     
-    public void PlayNormal()
+    private void PlayNormal()
     {
         Debug.Log("PlayNormal called!");
         if (AudioManager.Instance != null)
@@ -75,7 +167,7 @@ public class StartScreenUIManager : MonoBehaviour
         SceneManager.LoadScene(1);
     }
 
-    public void PlayDaily()
+    private void PlayDaily()
     {
         Debug.Log("PlayDaily called!");
         if (AudioManager.Instance != null)
@@ -97,7 +189,7 @@ public class StartScreenUIManager : MonoBehaviour
         SceneManager.LoadScene(1);
     }
 
-    public void QuitGame()
+    private void QuitGame()
     {
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         Application.Quit();

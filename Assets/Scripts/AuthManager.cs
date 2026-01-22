@@ -15,6 +15,8 @@ public class AuthManager : MonoBehaviour
 
     public bool IsSignedIn => User != null;
     public bool IsGuest => User != null && User.IsAnonymous;
+    public bool IsEmailVerified => User!= null && User.IsEmailVerified;
+
 
     void Awake()
     {
@@ -76,5 +78,13 @@ public class AuthManager : MonoBehaviour
     public void SignOut()
     {
         Auth.SignOut();
+    }
+
+    public async Task ResendVerificationEmail()
+    {
+        if (User != null && !User.IsEmailVerified)
+        {
+            await User.SendEmailVerificationAsync();
+        }
     }
 }
