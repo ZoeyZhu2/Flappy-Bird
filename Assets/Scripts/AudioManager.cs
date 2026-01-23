@@ -21,18 +21,11 @@ public class AudioManager : MonoBehaviour
 
     //Background music management
     private AudioSource backgroundMusicSource;
-
     [SerializeField] private AudioClip startScreenMusic;
     [SerializeField] private AudioClip gameMusic;
     private bool musicMuted = false;
 
-    //[SerializeField] private float musicVolume = 0.5f; //player setting without audio mixer
-
     //Default volumes
-    //prior to AudioMixer implementation
-    //[SerializeField] private float defaultStartScreenMusicVolume = 0.1f; 
-    //[SerializeField] private float defaultGameMusicVolume = 0.1f;
-
     [SerializeField] private float defaultMusicVolume = 0.05f;
     [SerializeField] private float defaultSoundFXVolume = 1f;
 
@@ -76,35 +69,41 @@ public class AudioManager : MonoBehaviour
         backgroundMusicSource.spatialBlend = 0f; //2D sound
         backgroundMusicSource.outputAudioMixerGroup = musicGroup;
 
-        // Load player preferences or use defaults
-        //ReapplyVolumeSettings();
-
-        // Debug.Log("AudioManager: Using AudioMixer named '" + audioMixer.name + "'");
-
     }
 
     private void Start()
     {
-        //Start playing music for the initial scene
         Scene currentScene = SceneManager.GetActiveScene();
         OnSceneLoaded(currentScene, LoadSceneMode.Single);
     }
 
     public void ReapplyVolumeSettings()
     {
-        float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") 
-            ? PlayerPrefs.GetFloat("BackgroundMusicVolume") 
-            : defaultMusicVolume;
-        
-        float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") 
-            ? PlayerPrefs.GetFloat("SoundFXVolume") 
-            : defaultSoundFXVolume;
+        var profile = PlayerDataManager.Instance?.Profile;
 
-        // Debug.Log("SettingsUIManager: Retrieved volumes - SoundFX=" + soundFXVol + " Music=" + musicVol);
+        if (profile == null)
+        {
+            SetMusicVolume(defaultMusicVolume);
+            SetSoundFXVolume(defaultSoundFXVolume);
+            return;
+        }
 
+        // float musicVol = PlayerPrefs.HasKey("BackgroundMusicVolume") 
+        //     ? PlayerPrefs.GetFloat("BackgroundMusicVolume") 
+        //     : defaultMusicVolume;
         
-        SetMusicVolume(musicVol);
-        SetSoundFXVolume(soundFXVol);
+        // float soundFXVol = PlayerPrefs.HasKey("SoundFXVolume") 
+        //     ? PlayerPrefs.GetFloat("SoundFXVolume") 
+        //     : defaultSoundFXVolume;
+        
+        // SetMusicVolume(musicVol);
+        // SetSoundFXVolume(soundFXVol);
+
+        SetMusicVolume(profile.musicVolume);
+        SetSoundFXVolume(profile.soundFXVolume);
+
+        MusicMute(profile.musicMuted);
+        SoundFXMute(profile.soundFXMuted);
     }
 
     private void OnEnable()
@@ -163,68 +162,40 @@ public class AudioManager : MonoBehaviour
     //ensures only one background music is playing at a time
     public void PlayStartScreenMusic()
     {
-        //Prior to AudioMixer implementation
-        //defaultMusicVolume = defaultStartScreenMusicVolume;
-        //PlayMusic(startScreenMusic, defaultStartScreenMusicVolume);
-
         PlayMusic(startScreenMusic);
     }
 
     public void PlayGameMusic()
     {
-        //prior to AudioMixer implementation
-        //defaultMusicVolume = defaultGameMusicVolume;
-        //PlayMusic(gameMusic, defaultGameMusicVolume);
-
         PlayMusic(gameMusic);
     }
 
     public float GetMusicVolume()
     {
-        //Prior to AudioMixer implementation
-        //return musicVolume;
-
         if (!audioMixer.GetFloat("BackgroundMusicVolume", out float db))
         {
             Debug.LogError("AudioManager: GetMusicVolume - GetFloat FAILED, using fallback -80dB"); 
             db = -80f; // fallback if parameter doesn't exist
         }
 
-        // Debug.Log("AudioManager: GetMusicVolume - Got dB=" + db + " from mixer");
-
-
         //convert dB back to linear
         float linearVolume = Mathf.Pow(10f, db / 20f);
-
-        // Debug.Log("AudioManager: GetMusicVolume - Converted to linear=" + linearVolume);
-
 
         return linearVolume;
     }
 
+//replace player prefs with account stuff:
     public void SetMusicVolume(float linearVolume)
     {
         linearVolume = Mathf.Clamp01(linearVolume);
         //conversion to dB
         float dB = linearVolume <= 0.0001f ? -80f : Mathf.Log10(linearVolume) * 20f;
         
-        // Debug.Log("AudioManager: SetMusicVolume input=" + linearVolume + " converted to dB=" + dB);
+        audioMixer.SetFloat("BackgroundMusicVolume", dB);
 
-        bool success = audioMixer.SetFloat("BackgroundMusicVolume", dB);
-        // Debug.Log("AudioManager: SetFloat success=" + success);
-
-        audioMixer.GetFloat("BackgroundMusicVolume", out float verifyDb);
-        //Debug.Log("AudioManager: Verified dB in mixer=" + verifyDb);
-
-
-        PlayerPrefs.SetFloat("BackgroundMusicVolume", linearVolume);
-        PlayerPrefs.Save();
-        //prior to AudioMixer implementation 
-        // musicVolume = Mathf.Clamp01(volume);
-        // if (backgroundMusicSource != null)
-        // {
-        //      backgroundMusicSource.volume = musicVolume * defaultMusicVolume; 
-        // }
+        PlayerDataManager.Instance?.UpdateMusicVolume(linearVolume);
+        // PlayerPrefs.SetFloat("BackgroundMusicVolume", linearVolume);
+        // PlayerPrefs.Save();
     }
 
     public bool IsMusicMuted()
@@ -238,16 +209,7 @@ public class AudioManager : MonoBehaviour
 
         //music continues running but muted
         backgroundMusicSource.mute = musicMuted;
-
-        //Keeps the music “in sync” if unmuted
-        // if (musicMuted && backgroundMusicSource.isPlaying)
-        // {
-        //     backgroundMusicSource.Pause();
-        // }
-        // else if (!musicMuted && !backgroundMusicSource.isPlaying)
-        // {
-        //     backgroundMusicSource.UnPause();
-        // }
+        PlayerDataManager.Instance?.UpdateMusicMute(musicMuted);
     }
 
     public void MusicPause()
@@ -291,11 +253,6 @@ public class AudioManager : MonoBehaviour
 
         Vector3 spawnPos = spawnTransform != null ? spawnTransform.position : Vector3.zero;
 
-        //Diagnostic info
-        // var clipName = clipToPlay != null ? clipToPlay.name : "(null)";
-        // var spawnName = spawnTransform != null ? spawnTransform.name : "(no transform)";
-        // Debug.Log("SoundFXManager: PlaySoundFX called with clip=" + clipName + " spawn=" + spawnName + " prefabAssigned=" + (soundFXSourcePrefab != null));
-
         //Get an inactive audio source from the pool or create a new one if none are available
         AudioSource audioSource = soundFXPool.Count > 0 ? soundFXPool.Dequeue() : Instantiate(soundFXSourcePrefab, spawnPos, Quaternion.identity, transform);
         audioSource.outputAudioMixerGroup = soundFXGroup; //just to make sure
@@ -303,37 +260,17 @@ public class AudioManager : MonoBehaviour
         audioSource.gameObject.SetActive(true);
         
         //create an audio source instance at the spawn position
-        // AudioSource audioSource = Instantiate(soundFXSourcePrefab, spawnPos, Quaternion.identity);
         audioSource.spatialBlend = 0f; // 0 = 2D sound, 1 = 3D sound
         audioSource.mute = false; //make sure my audio player object not muted
-        //Prior to AudioMixer implementation
-        //audioSource.volume = Mathf.Clamp01(volume * soundFXVolume); //default volume scaled by player choice
         audioSource.volume = Mathf.Clamp01(volume);
 
-        // Diagnostic info to help find why UI sounds may be silent
-        // Debug.Log("SoundFXManager: audioSource activeInHierarchy=" + audioSource.gameObject.activeInHierarchy +
-        //       " enabled=" + audioSource.enabled +
-        //       " mute=" + audioSource.mute +
-        //       " playOnAwake=" + audioSource.playOnAwake +
-        //       " spatialBlend=" + audioSource.spatialBlend +
-        //       " output=" + (audioSource.outputAudioMixerGroup != null ? audioSource.outputAudioMixerGroup.name : "(none)"));
-
-        // Debug.Log("SoundFXManager: AudioListener present=" + (audioListener != null) + (audioListener != null ? " name=" + audioListener.gameObject.name : ""));
-
+     
         // Use PlayOneShot for short UI sounds (more reliable for tiny clips)
-        //Prior to AudioMixer implementation
-        //audioSource.PlayOneShot(clipToPlay, Mathf.Clamp01(volume * soundFXVolume));
         audioSource.PlayOneShot(clipToPlay, Mathf.Clamp01(volume));
-        //Debug.Log("SoundFXManager: audiosource.PlayOneShot() called for clip=" + (clipToPlay != null ? clipToPlay.name : "(null)"));
 
         // Ensure a small minimum lifetime so very-short clips still play
         float life = clipToPlay.length > 0f ? clipToPlay.length : 0.2f;
         StartCoroutine(ReturnToPoolAfter(audioSource, life));
-
-        //for the case if I create a new audioSource every time (not using my pool)
-        //Destroy(audioSource.gameObject, life + 0.05f);
-        //destroy audio source after clipLength seconds (fallback to 1s if length unknown)
-
     }
 
     private System.Collections.IEnumerator ReturnToPoolAfter(AudioSource src, float seconds)
@@ -347,6 +284,7 @@ public class AudioManager : MonoBehaviour
     public void SoundFXMute(bool muteStatus)
     {
         soundFXMuted = muteStatus;
+        PlayerDataManager.Instance?.UpdateSoundFXMute(soundFXMuted);
     }
 
     public bool IsSoundFXMuted()
@@ -354,22 +292,20 @@ public class AudioManager : MonoBehaviour
         return soundFXMuted;
     }
 
+//replace player prefs with account stuff:
     public void SetSoundFXVolume(float linearVolume)
     {
         linearVolume = Mathf.Clamp01(linearVolume);
         float dB = linearVolume <= 0.0001f ? -80f : Mathf.Log10(linearVolume) * 20f;
         audioMixer.SetFloat("SoundFXVolume", dB);
 
-        PlayerPrefs.SetFloat("SoundFXVolume", linearVolume);
-        PlayerPrefs.Save();
-        //prior to AudioMixer implementation
-        //soundFXVolume = Mathf.Clamp01(volume);
+        PlayerDataManager.Instance?.UpdateSoundFXVolume(linearVolume);
+        // PlayerPrefs.SetFloat("SoundFXVolume", linearVolume);
+        // PlayerPrefs.Save();
     }
 
     public float GetSoundFXVolume()
     {
-       //Prior to AudioMixer implementation
-       //return soundFXVolume;
         if (!audioMixer.GetFloat("SoundFXVolume", out float db))
         {
             db = -80f; // fallback if parameter doesn't exist

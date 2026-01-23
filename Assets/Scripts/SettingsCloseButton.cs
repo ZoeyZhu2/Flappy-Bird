@@ -17,10 +17,4 @@ public class SettingsCloseButton : MonoBehaviour
             SettingsManager.Instance.CloseSettings();
         });
     }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
 }

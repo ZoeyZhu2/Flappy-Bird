@@ -19,6 +19,13 @@ public class PlayerProfile
 
     public int totalRuns = 0;
     public int totalPipes = 0;
+
+    // --- Player Preferences ---
+    //all linear volumes
+    public float musicVolume = 0.05f;
+    public float soundFXVolume = 1f;
+    public bool musicMuted = false;
+    public bool soundFXMuted = false;
 }
 
 public class PlayerDataManager : MonoBehaviour
@@ -119,7 +126,36 @@ public class PlayerDataManager : MonoBehaviour
             if (score > Profile.normalHighScore)
                 Profile.normalHighScore = score;
         }
-
         _ = SaveProfile();
     }
+
+    public void UpdateMusicVolume(float value)
+    {
+        if (Profile == null) return;
+        Profile.musicVolume = value;
+        _ = SaveProfile();
+    }
+
+    public void UpdateSoundFXVolume(float value)
+    {
+        if (Profile == null) return;
+        Profile.soundFXVolume = value;
+        _ = SaveProfile();
+    }
+
+    public void UpdateMusicMute(bool muted)
+    {
+        if (Profile == null) return;
+        Profile.musicMuted = muted;
+        _ = SaveProfile();
+    }
+
+    public void UpdateSoundFXMute(bool muted)
+    {
+        if (Profile == null) return;
+        Profile.soundFXMuted = muted;
+        _ = SaveProfile();
+    }
+
+
 }
