@@ -14,65 +14,137 @@ public class LeaderboardEntry
     public int score;
     public long timestamp;
 }
+
 public class LeaderboardManager : MonoBehaviour
 {
     [SerializeField] private GameObject rowPrefab;
     [SerializeField] private Transform content;
-    [SerializeField] private int maxDisplayRows = 100;
-    [SerializeField] private float cacheTimeSeconds = 60f; //how long to keep data before fetching from Firestore again
+    [SerializeField] private int maxDisplayRows = 20;
+    [SerializeField] private float cacheTimeSeconds = 60f;
+
     private FirebaseFirestore db;
-    private List<LeaderboardEntry> cachedLeaderboard = new(); //stores most recetnly fetched leaderboard in memory
-    private float lastLoadTime = -999f; //so first load always happens
+    private List<LeaderboardEntry> cachedLeaderboard = new();
+    private float lastLoadTime = -999f;
+    private float lastDailyLoadTime = -999f;
+    private bool lastLoadWasDaily = false;
 
     void Start()
     {
-        db = FirebaseFirestore.DefaultInstance;
+        if (db == null)
+        {
+            db = FirebaseFirestore.DefaultInstance;
+        }
     }
 
-    //default is that isDaily is false
     public async Task LoadLeaderboard(bool isDaily = false)
     {
-        if (Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds)
+        if (content == null)
         {
-            DisplayLeaderboard();
+            Debug.LogError("LeaderboardManager: content Transform is not assigned!");
             return;
         }
+
+        // Wait for Firebase to be ready
+        int retries = 0;
+        while (db == null && retries < 50)
+        {
+            db = FirebaseFirestore.DefaultInstance;
+            if (db == null)
+            {
+                await System.Threading.Tasks.Task.Delay(100);
+                retries++;
+            }
+        }
+
+        if (db == null)
+        {
+            Debug.LogError("LeaderboardManager: Firebase Firestore failed to initialize!");
+            return;
+        }
+
+        if (rowPrefab == null)
+        {
+            Debug.LogError("LeaderboardManager: rowPrefab is not assigned!");
+            return;
+        }
+        
+        // Return cached data if still valid and same type
+        if (lastLoadWasDaily == isDaily) // Same type as last load
+        {
+            if (isDaily && Time.realtimeSinceStartup - lastDailyLoadTime < cacheTimeSeconds)
+            {
+                Debug.Log("Using cached daily leaderboard");
+                DisplayLeaderboard();
+                return;
+            }
+            else if (!isDaily && Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds)
+            {
+                Debug.Log("Using cached normal leaderboard");
+                DisplayLeaderboard();
+                return;
+            }
+        }
+
         try
         {
             cachedLeaderboard.Clear();
-
-            if (isDaily) //query today's leaderboard directly
+            
+            if (isDaily)
             {
+                // Query today's leaderboard directly
                 string today = System.DateTime.UtcNow.ToString("yyyyMMdd");
                 var query = db.Collection("leaderboards").Document("daily").Collection(today)
                     .OrderByDescending("score")
                     .Limit(maxDisplayRows);
+                
                 var snapshot = await query.GetSnapshotAsync();
+                
                 if (snapshot.Documents.Count() == 0)
                 {
                     Debug.LogWarning("No scores found for today's leaderboard");
+                    DisplayLeaderboard(); // Clear the display
+                    return;
                 }
                 
                 foreach (var doc in snapshot.Documents)
                 {
-                    var entry = doc.ConvertTo<LeaderboardEntry>();
+                    var entry = new LeaderboardEntry
+                    {
+                        userId = doc.GetValue<string>("userId") ?? "",
+                        username = doc.GetValue<string>("username") ?? "",
+                        score = doc.GetValue<int>("score"),
+                        timestamp = doc.GetValue<long>("timestamp")
+                    };
                     cachedLeaderboard.Add(entry);
                 }
             }
             else
             {
-               var query = db.Collection("leaderboards").Document("normal").Collection("scores")
-                .OrderByDescending("score")
-                .Limit(maxDisplayRows); 
+                // Query all-time leaderboard
+                var query = db.Collection("leaderboards").Document("normal").Collection("scores")
+                    .OrderByDescending("score")
+                    .Limit(maxDisplayRows);
+                
                 var snapshot = await query.GetSnapshotAsync();
+                
                 foreach (var doc in snapshot.Documents)
                 {
-                    var entry = doc.ConvertTo<LeaderboardEntry>();
+                    var entry = new LeaderboardEntry
+                    {
+                        userId = doc.GetValue<string>("userId") ?? "",
+                        username = doc.GetValue<string>("username") ?? "",
+                        score = doc.GetValue<int>("score"),
+                        timestamp = doc.GetValue<long>("timestamp")
+                    };
                     cachedLeaderboard.Add(entry);
                 }
             }
-            
+
             lastLoadTime = Time.realtimeSinceStartup;
+            lastLoadWasDaily = isDaily;
+            if (isDaily)
+                lastDailyLoadTime = Time.realtimeSinceStartup;
+            
             DisplayLeaderboard();
         }
         catch (System.Exception e)
@@ -82,24 +154,40 @@ public class LeaderboardManager : MonoBehaviour
     }
 
     private void DisplayLeaderboard()
-    {   
-        //clear existing rows
+    {
+        Debug.Log($"DisplayLeaderboard called with {cachedLeaderboard.Count} entries");
+
+        // Clear existing rows (only destroy LeaderboardRow components)
         foreach (Transform child in content)
         {
-            Destroy(child.gameObject);
+            if (child.GetComponent<LeaderboardRow>() != null)
+            {
+                Destroy(child.gameObject);
+            }
         }
 
+        // Instantiate and populate rows
         for (int i = 0; i < cachedLeaderboard.Count; i++)
         {
-            GameObject rowObj = Instantiate(rowPrefab, content); //creates a prefab as child of content
-            LeaderboardRow row = rowObj.GetComponent<LeaderboardRow>(); //getting LeaderboardRow script
-            row.SetRow(i+1, cachedLeaderboard[i].username, cachedLeaderboard[i].score);
+            Debug.Log($"Creating row {i+1}: {cachedLeaderboard[i].username} - {cachedLeaderboard[i].score}");
+
+            GameObject rowObj = Instantiate(rowPrefab, content);
+            LeaderboardRow row = rowObj.GetComponent<LeaderboardRow>();
+            
+            if (row == null)
+            {
+                Debug.LogError($"LeaderboardRow component not found on prefab!");
+                continue;
+            }
+            row.SetRow(i + 1, cachedLeaderboard[i].username, cachedLeaderboard[i].score);
         }
+        Debug.Log("DisplayLeaderboard finished");
+
     }
 
     public void RefreshLeaderboard(bool isDaily = false)
     {
-        lastLoadTime = -999f; //make cache "expired"
+        lastLoadTime = -999f; // Force reload
         _ = LoadLeaderboard(isDaily);
     }
 
@@ -114,7 +202,6 @@ public class LeaderboardManager : MonoBehaviour
         }
         return -1;
     }
-
     private bool IsToday(long timestamp)
     {
         var date = UnixTimeStampToDateTime(timestamp);

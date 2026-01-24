@@ -135,11 +135,17 @@ public class LogicScript : MonoBehaviour
         if (AuthManager.Instance.IsSignedIn)
         {
             PlayerDataManager.Instance.TryUpdateHighScore(playerScore, isDaily);
-        }
-        else if (AuthManager.Instance.IsSignedIn && !AuthManager.Instance.IsEmailVerified)
-        {
-            verifyEmailWarning.gameObject.SetActive(true);
-            resendEmailButton.gameObject.SetActive(true);
+            int newHigh = GetCurrentHighScore(isDaily);
+            if (playerScore == newHigh && playerScore > 0)
+            {
+                newHighScore.gameObject.SetActive(true);
+                newHighScore.text = "NEW HIGH SCORE: " + playerScore;
+            }
+            if (!AuthManager.Instance.IsEmailVerified)
+            {
+                verifyEmailWarning.gameObject.SetActive(true);
+                resendEmailButton.gameObject.SetActive(true);
+            }
         }
         else
         {

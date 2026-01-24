@@ -12,6 +12,7 @@ public class StartScreenUIManager : MonoBehaviour
     [SerializeField] private Button dailyButton;
     [SerializeField] private Button leaderboardButton;
     [SerializeField] private Button signOutButton;
+    [SerializeField] private TMP_Text signOutButtonText;
     [SerializeField] private Button quitButton;
 
     //Audio
@@ -38,8 +39,18 @@ public class StartScreenUIManager : MonoBehaviour
 
     public void Start()
     {
-        OpenSignInScreen();
-        CloseStartScreen();
+        if (AuthManager.Instance.IsSignedIn)
+        {
+            // User already signed in, go straight to start screen
+            OpenStartScreen();
+            CloseSignInScreen();
+        }
+        else
+        {
+            // Not signed in, show sign-in screen
+            OpenSignInScreen();
+            CloseStartScreen();
+        }
     }
 
     void OnEnable()
@@ -53,7 +64,7 @@ public class StartScreenUIManager : MonoBehaviour
         normalButton.onClick.AddListener(PlayNormal);
         dailyButton.onClick.AddListener(PlayDaily);
         leaderboardButton.onClick.AddListener(LoadLeaderboard);
-        signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
+        signOutButton.onClick.AddListener(SignOut);
         quitButton.onClick.AddListener(QuitGame);
     }
 
@@ -68,7 +79,7 @@ public class StartScreenUIManager : MonoBehaviour
         normalButton.onClick.RemoveListener(PlayNormal);
         dailyButton.onClick.RemoveListener(PlayDaily);
         leaderboardButton.onClick.RemoveListener(LoadLeaderboard);
-        signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
+        signOutButton.onClick.RemoveListener(SignOut);
         quitButton.onClick.RemoveListener(QuitGame);
     }
 
@@ -105,6 +116,8 @@ public class StartScreenUIManager : MonoBehaviour
     private async void PlayAsGuest()
     {
         await AuthManager.Instance.GuestLogin();
+        CloseSignInScreen();
+        OpenStartScreen();
     }
     private void ShowCreateAccount()
     {
@@ -203,4 +216,13 @@ public class StartScreenUIManager : MonoBehaviour
         SceneManager.LoadScene(3, LoadSceneMode.Additive);
     }
     
+    void SignOut()
+    {
+        if (AuthManager.Instance.IsSignedIn)
+        {
+            AuthManager.Instance.SignOut();
+            CloseStartScreen();
+            OpenSignInScreen();
+        }
+    }
 }

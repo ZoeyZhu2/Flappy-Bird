@@ -29,19 +29,30 @@ public class LeaderboardUIController : MonoBehaviour
     public async void ShowDailyLeaderboard()
     {
         await leaderboardManager.LoadLeaderboard(isDaily: true);
-        countdownTimer.StartDailyCountdown();
+        if (countdownTimer != null)
+        {
+            countdownTimer.StartDailyCountdown();
+        }
     }
 
     public void HideDailyLeaderboard()
     {
-        countdownTimer.StopDailyCountdown();
+        if (countdownTimer != null)
+        {
+            countdownTimer.StopDailyCountdown();
+        }
     }
 
     public async void ShowNormalLeaderboard()
     {
+        HideDailyLeaderboard();
         await leaderboardManager.LoadLeaderboard();
-        countdownTimer.StopDailyCountdown();
+        if (countdownTimer != null)
+        {
+            countdownTimer.StopDailyCountdown();
+        }
     }
+
 
     void Start()
     {

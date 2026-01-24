@@ -15,8 +15,10 @@ public class AuthManager : MonoBehaviour
 
     public bool IsSignedIn => User != null;
     public bool IsGuest => User != null && User.IsAnonymous;
-    public bool IsEmailVerified => User!= null && User.IsEmailVerified;
-
+    public bool IsEmailVerified => User != null && User.IsEmailVerified;
+    
+    private bool firebaseReady = false;
+    public bool FirebaseReady => firebaseReady;
 
     void Awake()
     {
@@ -33,51 +35,88 @@ public class AuthManager : MonoBehaviour
         // Initialize Firebase
         FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
         {
-            Auth = FirebaseAuth.DefaultInstance;
-            Debug.Log("Firebase Auth ready.");
+            if (task.Result == DependencyStatus.Available)
+            {
+                Auth = FirebaseAuth.DefaultInstance;
+                firebaseReady = true;
+                Debug.Log("Firebase Auth ready.");
+            }
+            else
+            {
+                Debug.LogError("Could not resolve all Firebase dependencies: " + task.Result);
+                firebaseReady = false;
+            }
         });
     }
 
     public async Task<bool> SignIn(string email, string password)
     {
+        if (!firebaseReady)
+        {
+            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            return false;
+        }
+
         try
         {
             await Auth.SignInWithEmailAndPasswordAsync(email, password);
             await PlayerDataManager.Instance.LoadOrCreateUser();
             return true;
         }
-        catch
+        catch (System.Exception ex)
         {
+            Debug.LogError("Sign in failed: " + ex.Message);
             return false;
         }
     }
 
     public async Task<bool> CreateAccount(string email, string password, string username)
     {
+        if (!firebaseReady)
+        {
+            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            return false;
+        }
+
         try
         {
             await Auth.CreateUserWithEmailAndPasswordAsync(email, password);
-
             await User.SendEmailVerificationAsync();
-
             await PlayerDataManager.Instance.CreateNewUser(username, email);
-
             return true;
         }
-        catch
+        catch (System.Exception ex)
         {
+            Debug.LogError("Account creation failed: " + ex.Message);
             return false;
         }
     }
 
     public async Task GuestLogin()
     {
-        await Auth.SignInAnonymouslyAsync();
+        if (!firebaseReady)
+        {
+            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            return;
+        }
+
+        try
+        {
+            await Auth.SignInAnonymouslyAsync();
+            await PlayerDataManager.Instance.LoadOrCreateUser();
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError("Guest login failed: " + ex.Message);
+        }
     }
 
     public void SignOut()
     {
-        Auth.SignOut();
+        if (Auth != null)
+        {
+            Auth.SignOut();
+        }
     }
 
     public async Task ResendVerificationEmail()

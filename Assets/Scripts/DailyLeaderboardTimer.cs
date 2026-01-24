@@ -17,18 +17,30 @@ public class DailyLeaderboardTimer : MonoBehaviour
 
     public void StartDailyCountdown()
     {
+        if (countdownText == null)
+        {
+            Debug.LogError("DailyLeaderboardTimer: countdownText is not assigned!");
+            return;
+        }
+        
         isCountingDown = true;
         countdownText.gameObject.SetActive(true);
+        UpdateCountdown(); // Update immediately so it displays right away
     }
 
     public void StopDailyCountdown()
     {
         isCountingDown = false;
-        countdownText.gameObject.SetActive(false);
+        if (countdownText != null)
+        {
+            countdownText.gameObject.SetActive(false);
+        }    
     }
 
     private void UpdateCountdown()
     {
+        if (countdownText == null) return;
+
         // Get current UTC time
         DateTime now = DateTime.UtcNow;
         
@@ -49,6 +61,22 @@ public class DailyLeaderboardTimer : MonoBehaviour
 
     void Start()
     {
-        countdownText.gameObject.SetActive(false);
+        if (countdownText == null)
+        {
+            GameObject countdownObj = GameObject.FindWithTag("CountdownText");
+            if (countdownObj != null)
+            {
+                countdownText = countdownObj.GetComponent<TMP_Text>();
+            }        
+        }
+    
+        if (countdownText != null)
+        {
+            countdownText.gameObject.SetActive(false);
+        }
+        else
+        {
+            Debug.LogError("DailyLeaderboardTimer: Could not find TMP_Text component!");
+        }
     }
 }
