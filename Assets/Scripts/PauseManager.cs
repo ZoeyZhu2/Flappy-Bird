@@ -22,6 +22,8 @@ public class PauseManager : MonoBehaviour
 
     [SerializeField] private LogicScript logicScript;
 
+    [SerializeField] private Button leaderboardButton;
+
     void Awake()
     {
         inputActions = InputManager.inputActions;
@@ -39,6 +41,8 @@ public class PauseManager : MonoBehaviour
         #endif
         // SceneManager.sceneLoaded += OnSceneLoaded;
         signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
+        leaderboardButton.onClick.AddListener(LoadLeaderboard);
+
     }
 
     void OnDisable()
@@ -50,6 +54,7 @@ public class PauseManager : MonoBehaviour
         }
         // SceneManager.sceneLoaded -= OnSceneLoaded;
         signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
+        leaderboardButton.onClick.RemoveListener(LoadLeaderboard);
     }
 
     // private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
@@ -141,9 +146,8 @@ public class PauseManager : MonoBehaviour
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    private void LoadLeaderboard()
     {
-        
+        SceneManager.LoadScene(3, LoadSceneMode.Additive);
     }
 }

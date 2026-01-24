@@ -10,6 +10,7 @@ public class StartScreenUIManager : MonoBehaviour
     [SerializeField] private GameObject startScreen;
     [SerializeField] private Button normalButton;
     [SerializeField] private Button dailyButton;
+    [SerializeField] private Button leaderboardButton;
     [SerializeField] private Button signOutButton;
     [SerializeField] private Button quitButton;
 
@@ -51,6 +52,7 @@ public class StartScreenUIManager : MonoBehaviour
 
         normalButton.onClick.AddListener(PlayNormal);
         dailyButton.onClick.AddListener(PlayDaily);
+        leaderboardButton.onClick.AddListener(LoadLeaderboard);
         signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
         quitButton.onClick.AddListener(QuitGame);
     }
@@ -65,6 +67,7 @@ public class StartScreenUIManager : MonoBehaviour
 
         normalButton.onClick.RemoveListener(PlayNormal);
         dailyButton.onClick.RemoveListener(PlayDaily);
+        leaderboardButton.onClick.RemoveListener(LoadLeaderboard);
         signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
         quitButton.onClick.RemoveListener(QuitGame);
     }
@@ -193,6 +196,11 @@ public class StartScreenUIManager : MonoBehaviour
     {
         AudioManager.Instance.PlaySoundFX(pressSound, transform, volume);
         Application.Quit();
+    }
+
+    private void LoadLeaderboard()
+    {
+        SceneManager.LoadScene(3, LoadSceneMode.Additive);
     }
     
 }

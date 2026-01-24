@@ -104,30 +104,30 @@ public class PlayerDataManager : MonoBehaviour
         _ = SaveProfile();
     }
 
-    public void TryUpdateHighScore(int score, bool isDaily)
-    {
-        if (Profile == null) return;
+    // public void TryUpdateHighScore(int score, bool isDaily)
+    // {
+    //     if (Profile == null) return;
 
-        if (isDaily)
-        {
-            string today = DateTime.UtcNow.ToString("yyyyMMdd");
+    //     if (isDaily)
+    //     {
+    //         string today = DateTime.UtcNow.ToString("yyyyMMdd");
 
-            if (Profile.dailyHighScoreDate != today)
-            {
-                Profile.dailyHighScore = 0;
-                Profile.dailyHighScoreDate = today;
-            }
+    //         if (Profile.dailyHighScoreDate != today)
+    //         {
+    //             Profile.dailyHighScore = 0;
+    //             Profile.dailyHighScoreDate = today;
+    //         }
 
-            if (score > Profile.dailyHighScore)
-                Profile.dailyHighScore = score;
-        }
-        else
-        {
-            if (score > Profile.normalHighScore)
-                Profile.normalHighScore = score;
-        }
-        _ = SaveProfile();
-    }
+    //         if (score > Profile.dailyHighScore)
+    //             Profile.dailyHighScore = score;
+    //     }
+    //     else
+    //     {
+    //         if (score > Profile.normalHighScore)
+    //             Profile.normalHighScore = score;
+    //     }
+    //     _ = SaveProfile();
+    // }
 
     public void UpdateMusicVolume(float value)
     {
@@ -157,5 +157,69 @@ public class PlayerDataManager : MonoBehaviour
         _ = SaveProfile();
     }
 
+    // Add this to your existing PlayerDataManager class
 
+    private async Task UpdateLeaderboardEntry(bool isDaily)
+    {
+        if (Profile == null) return;
+
+        try
+        {
+            long timestamp = ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds();
+            
+            var entry = new
+            {
+                userId = uid,
+                username = Profile.username,
+                score = isDaily ? Profile.dailyHighScore : Profile.normalHighScore,
+                timestamp = timestamp
+            };
+
+            if (isDaily)
+            {
+                string today = DateTime.UtcNow.ToString("yyyyMMdd");
+                await db.Collection("leaderboards").Document("daily").Collection(today).Document(uid).SetAsync(entry);
+            }
+            else
+            {
+                await db.Collection("leaderboards").Document("normal").Collection("scores").Document(uid).SetAsync(entry);
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"Failed to update leaderboard: {e.Message}");
+        }
+    }
+
+    public void TryUpdateHighScore(int score, bool isDaily)
+    {
+    if (Profile == null) return;
+
+    if (isDaily)
+    {
+        string today = DateTime.UtcNow.ToString("yyyyMMdd");
+
+        if (Profile.dailyHighScoreDate != today)
+        {
+            Profile.dailyHighScore = 0;
+            Profile.dailyHighScoreDate = today;
+        }
+
+        if (score > Profile.dailyHighScore)
+        {
+            Profile.dailyHighScore = score;
+            _ = SaveProfile();
+            _ = UpdateLeaderboardEntry(isDaily: true);
+        }
+    }
+    else
+    {
+        if (score > Profile.normalHighScore)
+        {
+            Profile.normalHighScore = score;
+            _ = SaveProfile();
+            _ = UpdateLeaderboardEntry(isDaily: false);
+        }
+    }
+}
 }
