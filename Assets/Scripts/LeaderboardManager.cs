@@ -1,12 +1,12 @@
 using UnityEngine;
-using Firebase.Firestore;
-using Firebase.Extensions;
+using UnityEngine.UI;
+using TMPro;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 
-[Serializable]
+[System.Serializable]
 public class LeaderboardEntry
 {
     public string userId;
@@ -22,43 +22,54 @@ public class LeaderboardManager : MonoBehaviour
     [SerializeField] private int maxDisplayRows = 20;
     [SerializeField] private float cacheTimeSeconds = 60f;
 
-    private FirebaseFirestore db;
+    private FirebaseRestFirestore db;
     private List<LeaderboardEntry> cachedLeaderboard = new();
     private float lastLoadTime = -999f;
-    private float lastDailyLoadTime = -999f;
-    private bool lastLoadWasDaily = false;
 
     void Start()
     {
+        // Wait a moment for AuthManager to be available
         if (db == null)
         {
-            db = FirebaseFirestore.DefaultInstance;
+            if (!string.IsNullOrEmpty(AuthManager.Instance?.IdToken))
+            {
+                db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
+            }
+            else
+            {
+                Debug.LogWarning("LeaderboardManager: AuthManager not ready yet, will retry on LoadLeaderboard");
+            }
+        }
+    }
+
+    void OnEnable()
+    {
+        if (db == null && !string.IsNullOrEmpty(AuthManager.Instance.IdToken))
+        {
+            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
         }
     }
 
     public async Task LoadLeaderboard(bool isDaily = false)
     {
+        Debug.Log($"Loading leaderboard, isDaily={isDaily}");
+        Debug.Log($"Firestore DB initialized: {db != null}");
+        Debug.Log($"Auth token: {AuthManager.Instance.IdToken?.Substring(0, 20)}...");
+
+        // Initialize db if needed
+        if (db == null)
+        {
+            if (string.IsNullOrEmpty(AuthManager.Instance.IdToken))
+            {
+                Debug.LogError("LeaderboardManager: No auth token available!");
+                return;
+            }
+            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
+        }
+
         if (content == null)
         {
             Debug.LogError("LeaderboardManager: content Transform is not assigned!");
-            return;
-        }
-
-        // Wait for Firebase to be ready
-        int retries = 0;
-        while (db == null && retries < 50)
-        {
-            db = FirebaseFirestore.DefaultInstance;
-            if (db == null)
-            {
-                await System.Threading.Tasks.Task.Delay(100);
-                retries++;
-            }
-        }
-
-        if (db == null)
-        {
-            Debug.LogError("LeaderboardManager: Firebase Firestore failed to initialize!");
             return;
         }
 
@@ -67,89 +78,81 @@ public class LeaderboardManager : MonoBehaviour
             Debug.LogError("LeaderboardManager: rowPrefab is not assigned!");
             return;
         }
-        
-        // Return cached data if still valid and same type
-        if (lastLoadWasDaily == isDaily) // Same type as last load
+
+        // Return cached data if still valid
+        if (Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds)
         {
-            if (isDaily && Time.realtimeSinceStartup - lastDailyLoadTime < cacheTimeSeconds)
-            {
-                Debug.Log("Using cached daily leaderboard");
-                DisplayLeaderboard();
-                return;
-            }
-            else if (!isDaily && Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds)
-            {
-                Debug.Log("Using cached normal leaderboard");
-                DisplayLeaderboard();
-                return;
-            }
+            DisplayLeaderboard();
+            return;
         }
 
         try
         {
             cachedLeaderboard.Clear();
-            
+
             if (isDaily)
             {
-                // Query today's leaderboard directly
-                string today = System.DateTime.UtcNow.ToString("yyyyMMdd");
-                var query = db.Collection("leaderboards").Document("daily").Collection(today)
-                    .OrderByDescending("score")
-                    .Limit(maxDisplayRows);
-                
-                var snapshot = await query.GetSnapshotAsync();
-                
-                if (snapshot.Documents.Count() == 0)
+                // Query today's daily leaderboard
+                string today = DateTime.UtcNow.ToString("yyyyMMdd");
+                Debug.Log($"Querying daily leaderboard path: leaderboards/daily/{today}");
+                var results = await db.QueryDocuments($"leaderboards/daily/{today}");
+                Debug.Log($"Daily query returned {results.Count} results");
+                if (results.Count == 0)
                 {
                     Debug.LogWarning("No scores found for today's leaderboard");
-                    DisplayLeaderboard(); // Clear the display
-                    return;
                 }
-                
-                foreach (var doc in snapshot.Documents)
+
+                foreach (var doc in results)
                 {
                     var entry = new LeaderboardEntry
                     {
-                        userId = doc.GetValue<string>("userId") ?? "",
-                        username = doc.GetValue<string>("username") ?? "",
-                        score = doc.GetValue<int>("score"),
-                        timestamp = doc.GetValue<long>("timestamp")
+                        userId = doc.ContainsKey("userId") ? doc["userId"].ToString() : "",
+                        username = doc.ContainsKey("username") ? doc["username"].ToString() : "",
+                        score = doc.ContainsKey("score") ? Convert.ToInt32(doc["score"]) : 0,
+                        timestamp = doc.ContainsKey("timestamp") ? Convert.ToInt64(doc["timestamp"]) : 0
                     };
                     cachedLeaderboard.Add(entry);
                 }
+
+                // Sort by score descending and limit
+                cachedLeaderboard = cachedLeaderboard
+                    .OrderByDescending(e => e.score)
+                    .Take(maxDisplayRows)
+                    .ToList();
             }
             else
             {
-                // Query all-time leaderboard
-                var query = db.Collection("leaderboards").Document("normal").Collection("scores")
-                    .OrderByDescending("score")
-                    .Limit(maxDisplayRows);
-                
-                var snapshot = await query.GetSnapshotAsync();
-                
-                foreach (var doc in snapshot.Documents)
+                // Query all-time normal leaderboard
+                Debug.Log("Querying normal leaderboard path: leaderboards/normal/scores");
+
+                var results = await db.QueryDocuments("leaderboards/normal/scores");
+                Debug.Log($"Normal query returned {results.Count} results");
+
+                foreach (var doc in results)
                 {
                     var entry = new LeaderboardEntry
                     {
-                        userId = doc.GetValue<string>("userId") ?? "",
-                        username = doc.GetValue<string>("username") ?? "",
-                        score = doc.GetValue<int>("score"),
-                        timestamp = doc.GetValue<long>("timestamp")
+                        userId = doc.ContainsKey("userId") ? doc["userId"].ToString() : "",
+                        username = doc.ContainsKey("username") ? doc["username"].ToString() : "",
+                        score = doc.ContainsKey("score") ? Convert.ToInt32(doc["score"]) : 0,
+                        timestamp = doc.ContainsKey("timestamp") ? Convert.ToInt64(doc["timestamp"]) : 0
                     };
                     cachedLeaderboard.Add(entry);
                 }
+
+                // Sort by score descending and limit
+                cachedLeaderboard = cachedLeaderboard
+                    .OrderByDescending(e => e.score)
+                    .Take(maxDisplayRows)
+                    .ToList();
             }
 
             lastLoadTime = Time.realtimeSinceStartup;
-            lastLoadWasDaily = isDaily;
-            if (isDaily)
-                lastDailyLoadTime = Time.realtimeSinceStartup;
-            
             DisplayLeaderboard();
         }
         catch (System.Exception e)
         {
-            Debug.LogError($"Failed to load leaderboard: {e.Message}");
+            Debug.LogError($"Failed to load leaderboard: {e.Message}\n{e.StackTrace}");
         }
     }
 
@@ -157,13 +160,10 @@ public class LeaderboardManager : MonoBehaviour
     {
         Debug.Log($"DisplayLeaderboard called with {cachedLeaderboard.Count} entries");
 
-        // Clear existing rows (only destroy LeaderboardRow components)
-        foreach (Transform child in content)
+        // Clear existing rows (skip first child which is the labels row)
+        for (int i = content.childCount - 1; i > 0; i--)
         {
-            if (child.GetComponent<LeaderboardRow>() != null)
-            {
-                Destroy(child.gameObject);
-            }
+            Destroy(content.GetChild(i).gameObject);
         }
 
         // Instantiate and populate rows
@@ -173,16 +173,17 @@ public class LeaderboardManager : MonoBehaviour
 
             GameObject rowObj = Instantiate(rowPrefab, content);
             LeaderboardRow row = rowObj.GetComponent<LeaderboardRow>();
-            
+
             if (row == null)
             {
                 Debug.LogError($"LeaderboardRow component not found on prefab!");
                 continue;
             }
+
             row.SetRow(i + 1, cachedLeaderboard[i].username, cachedLeaderboard[i].score);
         }
-        Debug.Log("DisplayLeaderboard finished");
 
+        Debug.Log("DisplayLeaderboard finished");
     }
 
     public void RefreshLeaderboard(bool isDaily = false)
@@ -201,17 +202,5 @@ public class LeaderboardManager : MonoBehaviour
             }
         }
         return -1;
-    }
-    private bool IsToday(long timestamp)
-    {
-        var date = UnixTimeStampToDateTime(timestamp);
-        return date.Date == DateTime.UtcNow.Date;
-    }
-
-    private DateTime UnixTimeStampToDateTime(long unixTimeStamp)
-    {
-        System.DateTime dateTime = new(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
-        dateTime = dateTime.AddSeconds(unixTimeStamp).ToUniversalTime();
-        return dateTime;
     }
 }

@@ -19,6 +19,7 @@ public class LogicScript : MonoBehaviour
     [SerializeField] private Text scoreText;
     [SerializeField] private Text highScoreText;
     [SerializeField] private GameObject gameOverScreen;
+    [SerializeField] private Button playAgainButton;
     [SerializeField] private TMP_Text newHighScore;
     [SerializeField] private TMP_Text verifyEmailWarning;
     [SerializeField] private Button resendEmailButton;
@@ -71,6 +72,8 @@ public class LogicScript : MonoBehaviour
         inputActions.UI.PlayAgain.performed += OnPlayAgain;
         inputActions.UI.PlayAgain.Enable();
 
+        playAgainButton.onClick.AddListener(RestartGame);
+
         openCreateAccount.onClick.AddListener(ShowCreateAccount);
         openSignIn.onClick.AddListener(ShowSignIn);
         skipButton.onClick.AddListener(RestartGame);
@@ -87,7 +90,7 @@ public class LogicScript : MonoBehaviour
     void OnDisable()
     {
         inputActions.UI.PlayAgain.performed -= OnPlayAgain;
-
+        playAgainButton.onClick.RemoveListener(RestartGame);
         openCreateAccount.onClick.RemoveAllListeners();
         openSignIn.onClick.RemoveAllListeners();
         skipButton.onClick.RemoveAllListeners();
@@ -102,11 +105,48 @@ public class LogicScript : MonoBehaviour
 
         if (AuthManager.Instance.IsSignedIn)
         {
-            LoadHighScoreFromProfile();
+            // Make sure profile is loaded before trying to access it
+            if (PlayerDataManager.Instance.Profile == null)
+            {
+                Debug.LogWarning("LogicScript: Profile not loaded yet, loading now");
+                StartCoroutine(LoadProfileAndDisplayScore());
+            }
+            else
+            {
+                LoadHighScoreFromProfile();
+            }
         }
         else
         {
             highScoreText.text= "High Score: 0";
+        }
+    }
+
+    private IEnumerator LoadProfileAndDisplayScore()
+    {
+        yield return StartCoroutine(LoadProfileCoroutine());
+        LoadHighScoreFromProfile();
+    }
+
+    private IEnumerator LoadProfileCoroutine()
+    {
+        var task = PlayerDataManager.Instance.LoadOrCreateUser();
+        while (!task.IsCompleted)
+        {
+            yield return null;
+        }
+        if (task.IsFaulted)
+        {
+            Debug.LogError($"Failed to load profile: {task.Exception}");
+        }
+        else
+        {
+            var profile = PlayerDataManager.Instance.Profile;
+            Debug.Log($"Profile loaded successfully");
+            Debug.Log($"  Username: {profile?.username}");
+            Debug.Log($"  Normal High Score: {profile?.normalHighScore}");
+            Debug.Log($"  Daily High Score: {profile?.dailyHighScore}");
+            Debug.Log($"  Daily High Score Date: {profile?.dailyHighScoreDate}");
         }
     }
 
@@ -132,32 +172,54 @@ public class LogicScript : MonoBehaviour
 
         bool isDaily = GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed;
 
-        if (AuthManager.Instance.IsSignedIn)
-        {
+        // Update high scores for both signed-in users and guests
+        if (PlayerDataManager.Instance != null)
             PlayerDataManager.Instance.TryUpdateHighScore(playerScore, isDaily);
+
+        if (AuthManager.Instance != null && AuthManager.Instance.IsSignedIn && !AuthManager.Instance.IsGuest)
+        {
             int newHigh = GetCurrentHighScore(isDaily);
             if (playerScore == newHigh && playerScore > 0)
             {
                 newHighScore.gameObject.SetActive(true);
                 newHighScore.text = "NEW HIGH SCORE: " + playerScore;
             }
+            
+            // Show verify email warning if email not verified
             if (!AuthManager.Instance.IsEmailVerified)
             {
                 verifyEmailWarning.gameObject.SetActive(true);
                 resendEmailButton.gameObject.SetActive(true);
             }
+            
+            // Hide guest buttons
+            openCreateAccount.gameObject.SetActive(false);
+            openSignIn.gameObject.SetActive(false);
+            skipButton.gameObject.SetActive(false);
         }
         else
         {
-            openCreateAccount.gameObject.SetActive(true);
-            openSignIn.gameObject.SetActive(true);
-            skipButton.gameObject.SetActive(true);
+            int newHigh = GetCurrentHighScore(isDaily);
+            if (playerScore == newHigh && playerScore > 0)
+            {
+                newHighScore.gameObject.SetActive(true);
+                newHighScore.text = "NEW HIGH SCORE: " + playerScore;
+
+                // Player is a guest - show sign in options
+                openCreateAccount.gameObject.SetActive(true);
+                openSignIn.gameObject.SetActive(true);
+                skipButton.gameObject.SetActive(true);
+
+                // Hide verify email stuff
+                verifyEmailWarning.gameObject.SetActive(false);
+                resendEmailButton.gameObject.SetActive(false);
+            }
+            
         }
 
         highScore = GetCurrentHighScore(isDaily);
         highScoreText.text = (isDaily ? "Daily High Score: " : "High Score: ") + highScore;
     }
-
     private int GetCurrentHighScore(bool isDaily)
     {
         var profile = PlayerDataManager.Instance.Profile;
@@ -168,6 +230,12 @@ public class LogicScript : MonoBehaviour
 
     private void LoadHighScoreFromProfile()
     {
+        if (AuthManager.Instance == null || GameModeManager.Instance == null)
+        {
+            highScoreText.text = "High Score: 0";
+            return;
+        }
+
         bool isDaily = GameModeManager.Instance.GetCurrentMode() == GameMode.DailySeed;
         highScore = GetCurrentHighScore(isDaily);
         highScoreText.text = (isDaily ? "Daily High Score: " : "High Score: ") + highScore;
@@ -197,6 +265,8 @@ public class LogicScript : MonoBehaviour
             openSignIn.gameObject.SetActive(false);
             skipButton.gameObject.SetActive(false);
 
+            // Sync any guest scores to the new account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             LoadHighScoreFromProfile();
         }
     }
@@ -215,6 +285,8 @@ public class LogicScript : MonoBehaviour
             openSignIn.gameObject.SetActive(false);
             skipButton.gameObject.SetActive(false);
 
+            // Sync any guest scores to the account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             LoadHighScoreFromProfile();
         }
     }

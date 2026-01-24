@@ -1,28 +1,25 @@
-//login / logout / account creation
-
 using UnityEngine;
-using Firebase;
-using Firebase.Auth;
-using Firebase.Extensions;
 using System.Threading.Tasks;
 
 public class AuthManager : MonoBehaviour
 {
     public static AuthManager Instance;
 
-    public FirebaseAuth Auth { get; private set; }
-    public FirebaseUser User => Auth?.CurrentUser;
+    private FirebaseRestAuth auth;
+    private const string WEB_API_KEY = "AIzaSyA-cTGbJEmFEOnkXqjAyv4chzSm3Btr3ho";
 
-    public bool IsSignedIn => User != null;
-    public bool IsGuest => User != null && User.IsAnonymous;
-    public bool IsEmailVerified => User != null && User.IsEmailVerified;
-    
+    public string UserId => auth?.UserId;
+    public string Email => auth?.Email;
+    public string IdToken => auth?.IdToken;
+    public bool IsSignedIn => auth?.IsSignedIn ?? false;
+    public bool IsGuest => auth?.IsAnonymous ?? false;
+    public bool IsEmailVerified => !IsGuest;
+
     private bool firebaseReady = false;
     public bool FirebaseReady => firebaseReady;
 
     void Awake()
     {
-        // Singleton (only one survives across scenes)
         if (Instance != null)
         {
             Destroy(gameObject);
@@ -32,40 +29,32 @@ public class AuthManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
 
-        // Initialize Firebase
-        FirebaseApp.CheckAndFixDependenciesAsync().ContinueWithOnMainThread(task =>
-        {
-            if (task.Result == DependencyStatus.Available)
-            {
-                Auth = FirebaseAuth.DefaultInstance;
-                firebaseReady = true;
-                Debug.Log("Firebase Auth ready.");
-            }
-            else
-            {
-                Debug.LogError("Could not resolve all Firebase dependencies: " + task.Result);
-                firebaseReady = false;
-            }
-        });
+        // Initialize Firebase REST Auth
+        auth = new FirebaseRestAuth(WEB_API_KEY);
+        firebaseReady = true;
+        Debug.Log("Firebase REST Auth initialized.");
     }
 
     public async Task<bool> SignIn(string email, string password)
     {
         if (!firebaseReady)
         {
-            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            Debug.LogError("Firebase not initialized yet.");
             return false;
         }
 
         try
         {
-            await Auth.SignInWithEmailAndPasswordAsync(email, password);
-            await PlayerDataManager.Instance.LoadOrCreateUser();
-            return true;
+            bool success = await auth.SignInWithEmailPassword(email, password);
+            if (success)
+            {
+                await PlayerDataManager.Instance.LoadOrCreateUser();
+            }
+            return success;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("Sign in failed: " + ex.Message);
+            Debug.LogError($"Sign in failed: {ex.Message}");
             return false;
         }
     }
@@ -74,20 +63,23 @@ public class AuthManager : MonoBehaviour
     {
         if (!firebaseReady)
         {
-            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            Debug.LogError("Firebase not initialized yet.");
             return false;
         }
 
         try
         {
-            await Auth.CreateUserWithEmailAndPasswordAsync(email, password);
-            await User.SendEmailVerificationAsync();
-            await PlayerDataManager.Instance.CreateNewUser(username, email);
-            return true;
+            bool success = await auth.SignUpWithEmailPassword(email, password);
+            if (success)
+            {
+                await PlayerDataManager.Instance.CreateNewUser(username, email);
+                return true;
+            }
+            return false;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("Account creation failed: " + ex.Message);
+            Debug.LogError($"Account creation failed: {ex.Message}");
             return false;
         }
     }
@@ -96,34 +88,34 @@ public class AuthManager : MonoBehaviour
     {
         if (!firebaseReady)
         {
-            Debug.LogError("Firebase not initialized yet. Try again in a moment.");
+            Debug.LogError("Firebase not initialized yet.");
             return;
         }
 
         try
         {
-            await Auth.SignInAnonymouslyAsync();
+            await auth.SignInAnonymously();
             await PlayerDataManager.Instance.LoadOrCreateUser();
         }
         catch (System.Exception ex)
         {
-            Debug.LogError("Guest login failed: " + ex.Message);
+            Debug.LogError($"Guest login failed: {ex.Message}");
         }
     }
 
     public void SignOut()
     {
-        if (Auth != null)
+        if (auth != null)
         {
-            Auth.SignOut();
+            auth.SignOut();
         }
     }
 
     public async Task ResendVerificationEmail()
     {
-        if (User != null && !User.IsEmailVerified)
-        {
-            await User.SendEmailVerificationAsync();
-        }
+        // REST API doesn't support email verification easily
+        // For WebGL, you may need to implement custom email verification
+        Debug.LogWarning("Email verification not yet implemented for REST API");
+        await Task.CompletedTask;
     }
 }
