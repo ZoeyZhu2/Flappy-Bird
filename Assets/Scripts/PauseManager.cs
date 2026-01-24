@@ -18,7 +18,7 @@ public class PauseManager : MonoBehaviour
     [SerializeField] private Button quitButton;
     [SerializeField] private TMP_Text quitButtonText;
 
-    [SerializeField] private Button signOutButton;
+    // [SerializeField] private Button signOutButton;
 
     [SerializeField] private LogicScript logicScript;
 
@@ -40,7 +40,7 @@ public class PauseManager : MonoBehaviour
             quitButtonText.text = "Restart Game";
         #endif
         // SceneManager.sceneLoaded += OnSceneLoaded;
-        signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
+        // signOutButton.onClick.AddListener(AuthManager.Instance.SignOut);
         leaderboardButton.onClick.AddListener(LoadLeaderboard);
 
     }
@@ -53,7 +53,7 @@ public class PauseManager : MonoBehaviour
             inputActions.UI.Pause.Disable();
         }
         // SceneManager.sceneLoaded -= OnSceneLoaded;
-        signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
+        // signOutButton.onClick.RemoveListener(AuthManager.Instance.SignOut);
         leaderboardButton.onClick.RemoveListener(LoadLeaderboard);
     }
 
