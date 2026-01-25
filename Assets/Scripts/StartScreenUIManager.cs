@@ -108,6 +108,8 @@ public class StartScreenUIManager : MonoBehaviour
 
         if (success)
         {
+            // Sync any guest scores to the signed-in account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             CloseSignInScreen();
             OpenStartScreen();
         }
@@ -123,6 +125,8 @@ public class StartScreenUIManager : MonoBehaviour
 
         if (success)
         {
+            // Sync any guest scores to the new account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             CloseCreateAccount();
             CloseSignInScreen();
             OpenStartScreen();

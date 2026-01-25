@@ -50,6 +50,12 @@ public class PlayerDataManager : MonoBehaviour
     {
         uid = AuthManager.Instance.UserId;
 
+        // Initialize Firestore with user's auth token
+        if (db == null)
+        {
+            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
+        }
+
         Profile = new PlayerProfile
         {
             username = username,

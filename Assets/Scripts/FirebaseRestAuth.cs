@@ -136,7 +136,15 @@ public class FirebaseRestAuth
             var value = data[key];
             
             if (value is string)
-                json += $"\"{key}\":\"{value}\"";
+            {
+                // Escape quotes and special characters in strings
+                string escapedValue = ((string)value)
+                    .Replace("\\", "\\\\")
+                    .Replace("\"", "\\\"")
+                    .Replace("\n", "\\n")
+                    .Replace("\r", "\\r");
+                json += $"\"{key}\":\"{escapedValue}\"";
+            }
             else if (value is bool)
                 json += $"\"{key}\":{((bool)value ? "true" : "false")}";
             else

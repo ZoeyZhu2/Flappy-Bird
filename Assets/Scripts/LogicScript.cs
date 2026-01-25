@@ -81,8 +81,18 @@ public class LogicScript : MonoBehaviour
         createAccountButton.onClick.AddListener(CreateAccount);
         signInButton.onClick.AddListener(SignIn);
 
-        closeCreateAccountButton.onClick.AddListener(() => createAccountCanvas.SetActive(false));
-        closeSignInButton.onClick.AddListener(() => signInCanvas.SetActive(false));
+        closeCreateAccountButton.onClick.AddListener(() => 
+        {
+            createAccountCanvas.SetActive(false);
+            inputActions.Player.Enable();
+            inputActions.UI.Pause.Enable();
+        });
+        closeSignInButton.onClick.AddListener(() => 
+        {
+            signInCanvas.SetActive(false);
+            inputActions.Player.Enable();
+            inputActions.UI.Pause.Enable();
+        });
 
         resendEmailButton.onClick.AddListener(ResendEmail);
     }
@@ -291,8 +301,19 @@ public class LogicScript : MonoBehaviour
         }
     }
 
-    private void ShowCreateAccount() => createAccountCanvas.SetActive(true);
-    private void ShowSignIn() => signInCanvas.SetActive(true);
+    private void ShowCreateAccount()
+    {
+        createAccountCanvas.SetActive(true);
+        inputActions.Player.Disable();
+        inputActions.UI.Pause.Disable();
+    }
+
+    private void ShowSignIn()
+    {
+        signInCanvas.SetActive(true);
+        inputActions.Player.Disable();
+        inputActions.UI.Pause.Disable();
+    }
 
     private void OnPlayAgain(InputAction.CallbackContext ctx)
     {
