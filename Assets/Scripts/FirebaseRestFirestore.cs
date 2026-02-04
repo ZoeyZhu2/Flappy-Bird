@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Collections;
 
 [System.Serializable]
 public class FirestoreDocument
@@ -30,10 +31,27 @@ public class FirebaseRestFirestore
     private const string DATABASE_ID = "(default)";
     private const string BASE_URL = "https://firestore.googleapis.com/v1/projects";
     private string idToken;
+    private static GameObject coroutineRunner;
 
     public FirebaseRestFirestore(string token)
     {
         idToken = token;
+        EnsureCoroutineRunner();
+    }
+    
+    private static void EnsureCoroutineRunner()
+    {
+        if (coroutineRunner == null)
+        {
+            coroutineRunner = new GameObject("FirebaseRestFirestoreCoroutineRunner");
+            coroutineRunner.AddComponent<CoroutineRunner>();
+            GameObject.DontDestroyOnLoad(coroutineRunner);
+        }
+    }
+    
+    private class CoroutineRunner : MonoBehaviour
+    {
+        // Just exists to run coroutines
     }
 
     public async Task<bool> SetDocument(string collection, string documentId, Dictionary<string, object> data)
@@ -66,36 +84,51 @@ public class FirebaseRestFirestore
         }
         json += "}}";
         
-        Debug.Log($"SetDocument to {collection}/{documentId}: {json.Substring(0, Mathf.Min(200, json.Length))}...");
+        Debug.Log($"[SetDocument] Writing to {collection}/{documentId}");
 
+        var tcs = new TaskCompletionSource<bool>();
+        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
+        
+        runner.StartCoroutine(SetDocumentCoroutine(url, json, tcs));
+        
         try
         {
-            using (UnityWebRequest request = new UnityWebRequest(url, "PATCH"))
-            {
-                request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
-                request.downloadHandler = new DownloadHandlerBuffer();
-                request.SetRequestHeader("Content-Type", "application/json");
-                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-
-                var asyncOp = request.SendWebRequest();
-                while (!asyncOp.isDone) await Task.Delay(10);
-
-                if (request.result == UnityWebRequest.Result.Success)
-                {
-                    Debug.Log($"SetDocument succeeded: {request.downloadHandler.text.Substring(0, Mathf.Min(200, request.downloadHandler.text.Length))}");
-                    return true;
-                }
-                else
-                {
-                    Debug.LogError($"Set document failed: {request.error}\n{request.downloadHandler.text}");
-                    return false;
-                }
-            }
+            return await tcs.Task;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Set document error: {ex.Message}");
+            Debug.LogError($"[SetDocument] Exception: {ex.Message}");
             return false;
+        }
+    }
+    
+    private IEnumerator SetDocumentCoroutine(string url, string json, TaskCompletionSource<bool> tcs)
+    {
+        using (UnityWebRequest request = new UnityWebRequest(url, "PATCH"))
+        {
+            request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+
+            Debug.Log($"[SetDocumentCoroutine] Sending PATCH request to {url}");
+            yield return request.SendWebRequest();
+            
+            Debug.Log($"[SetDocumentCoroutine] Request completed. Result: {request.result}");
+
+            bool success = false;
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log($"[SetDocumentCoroutine] Success!");
+                success = true;
+            }
+            else
+            {
+                Debug.LogError($"[SetDocumentCoroutine] Failed: {request.error}\nResponse: {request.downloadHandler.text}");
+                success = false;
+            }
+            
+            tcs.SetResult(success);
         }
     }
 
@@ -106,36 +139,58 @@ public class FirebaseRestFirestore
 
     public async Task<Dictionary<string, object>> GetDocument(string collection, string documentId)
     {
+        Debug.Log($"[GetDocument] Getting document: {collection}/{documentId}");
+        
         string url = $"{BASE_URL}/{PROJECT_ID}/databases/{DATABASE_ID}/documents/{collection}/{documentId}";
-
+        
+        Debug.Log($"[GetDocument] Requesting: {url}");
+        
+        var tcs = new TaskCompletionSource<Dictionary<string, object>>();
+        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
+        
+        runner.StartCoroutine(GetDocumentCoroutine(url, tcs));
+        
         try
         {
-            using (UnityWebRequest request = UnityWebRequest.Get(url))
-            {
-                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-
-                var asyncOp = request.SendWebRequest();
-                while (!asyncOp.isDone) await Task.Delay(10);
-
-                if (request.result == UnityWebRequest.Result.Success)
-                {
-                    string responseText = request.downloadHandler.text;
-                    Debug.Log($"GetDocument response from {collection}/{documentId}:\n{responseText}");
-                    
-                    // Manually parse the fields from the JSON response
-                    return ParseFirestoreResponse(responseText);
-                }
-                else
-                {
-                    Debug.LogError($"Get document failed: {request.error}\nURL: {url}\nResponse: {request.downloadHandler.text}");
-                    return null;
-                }
-            }
+            var result = await tcs.Task;
+            Debug.Log($"[GetDocument] Result: {(result == null ? "null" : "object with " + result.Count + " fields")}");
+            return result;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Get document error: {ex.Message}");
+            Debug.LogError($"[GetDocument] Exception: {ex.Message}");
             return null;
+        }
+    }
+    
+    private IEnumerator GetDocumentCoroutine(string url, TaskCompletionSource<Dictionary<string, object>> tcs)
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+            
+            yield return request.SendWebRequest();
+            
+            Debug.Log($"[GetDocumentCoroutine] Request completed. Result: {request.result}");
+            
+            Dictionary<string, object> result = null;
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string responseText = request.downloadHandler.text;
+                Debug.Log($"[GetDocumentCoroutine] Success response");
+                
+                // Manually parse the fields from the JSON response
+                result = ParseFirestoreResponse(responseText);
+            }
+            else
+            {
+                Debug.LogWarning($"[GetDocumentCoroutine] Request failed. Error: {request.error}, Code: {request.responseCode}");
+                // Return null on 404 or other errors - caller will handle creating new document
+                result = null;
+            }
+            
+            tcs.SetResult(result);
         }
     }
 
@@ -284,88 +339,89 @@ public class FirebaseRestFirestore
     {
         string url = $"{BASE_URL}/{PROJECT_ID}/databases/{DATABASE_ID}/documents/{collection}";
 
+        var tcs = new TaskCompletionSource<List<Dictionary<string, object>>>();
+        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
+        
+        runner.StartCoroutine(QueryDocumentsCoroutine(url, tcs));
+        
         try
         {
-            using (UnityWebRequest request = UnityWebRequest.Get(url))
-            {
-                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-
-                var asyncOp = request.SendWebRequest();
-                while (!asyncOp.isDone) await Task.Delay(10);
-
-                if (request.result == UnityWebRequest.Result.Success)
-                {
-                    string responseText = request.downloadHandler.text;
-                    var results = new List<Dictionary<string, object>>();
-                    
-                    Debug.Log($"QueryDocuments response length: {responseText.Length}");
-                    if (responseText.Length < 1000)
-                        Debug.Log($"QueryDocuments response: {responseText}");
-                    else
-                        Debug.Log($"QueryDocuments response (first 1000): {responseText.Substring(0, 1000)}...");
-                    
-                    // Find all document objects - look for each complete document object
-                    // Documents are in the "documents" array, each starting with "name" field
-                    int docIndex = 0;
-                    while (true)
-                    {
-                        // Find next document start - look for "name": which indicates start of a document
-                        int nameIndex = responseText.IndexOf("\"name\"", docIndex);
-                        if (nameIndex == -1)
-                            break;
-                        
-                        // Backtrack to find the opening brace of this document object
-                        int docStart = nameIndex - 1;
-                        while (docStart >= 0 && responseText[docStart] != '{')
-                            docStart--;
-                        
-                        if (docStart < 0)
-                        {
-                            docIndex = nameIndex + 1;
-                            continue;
-                        }
-                        
-                        // Find the matching closing brace for this document
-                        int docEnd = FindMatchingBrace(responseText, docStart);
-                        if (docEnd == -1)
-                        {
-                            docIndex = nameIndex + 1;
-                            continue;
-                        }
-                        
-                        // Extract this document
-                        string docStr = responseText.Substring(docStart, docEnd - docStart + 1);
-                        Debug.Log($"Processing document: {docStr.Substring(0, Mathf.Min(200, docStr.Length))}...");
-                        
-                        // Parse this document using ParseFirestoreResponse
-                        var doc = ParseFirestoreResponse(docStr);
-                        if (doc.Count > 0)
-                        {
-                            results.Add(doc);
-                            Debug.Log($"  Added document with {doc.Count} fields");
-                        }
-                        else
-                        {
-                            Debug.LogWarning($"  Document returned 0 fields");
-                        }
-                        
-                        docIndex = docEnd + 1;
-                    }
-
-                    Debug.Log($"Parsed {results.Count} documents from query");
-                    return results;
-                }
-                else
-                {
-                    Debug.LogError($"Query failed: {request.error}\n{request.downloadHandler.text}");
-                    return new List<Dictionary<string, object>>();
-                }
-            }
+            return await tcs.Task;
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Query error: {ex.Message}\n{ex.StackTrace}");
+            Debug.LogError($"[QueryDocuments] Exception: {ex.Message}");
             return new List<Dictionary<string, object>>();
+        }
+    }
+    
+    private IEnumerator QueryDocumentsCoroutine(string url, TaskCompletionSource<List<Dictionary<string, object>>> tcs)
+    {
+        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        {
+            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+
+            yield return request.SendWebRequest();
+
+            var results = new List<Dictionary<string, object>>();
+            
+            if (request.result == UnityWebRequest.Result.Success)
+            {
+                string responseText = request.downloadHandler.text;
+                
+                Debug.Log($"[QueryDocumentsCoroutine] Response length: {responseText.Length}");
+                
+                // Find all document objects - look for each complete document object
+                // Documents are in the "documents" array, each starting with "name" field
+                int docIndex = 0;
+                while (true)
+                {
+                    // Find next document start - look for "name": which indicates start of a document
+                    int nameIndex = responseText.IndexOf("\"name\"", docIndex);
+                    if (nameIndex == -1)
+                        break;
+                    
+                    // Backtrack to find the opening brace of this document object
+                    int docStart = nameIndex - 1;
+                    while (docStart >= 0 && responseText[docStart] != '{')
+                        docStart--;
+                    
+                    if (docStart < 0)
+                    {
+                        docIndex = nameIndex + 1;
+                        continue;
+                    }
+                    
+                    // Find the matching closing brace for this document
+                    int docEnd = FindMatchingBrace(responseText, docStart);
+                    if (docEnd == -1)
+                    {
+                        docIndex = nameIndex + 1;
+                        continue;
+                    }
+                    
+                    // Extract this document
+                    string docStr = responseText.Substring(docStart, docEnd - docStart + 1);
+                    
+                    // Parse this document using ParseFirestoreResponse
+                    var doc = ParseFirestoreResponse(docStr);
+                    if (doc.Count > 0)
+                    {
+                        results.Add(doc);
+                        Debug.Log($"[QueryDocumentsCoroutine] Added document with {doc.Count} fields");
+                    }
+                    
+                    docIndex = docEnd + 1;
+                }
+
+                Debug.Log($"[QueryDocumentsCoroutine] Parsed {results.Count} documents");
+            }
+            else
+            {
+                Debug.LogError($"[QueryDocumentsCoroutine] Query failed: {request.error}");
+            }
+            
+            tcs.SetResult(results);
         }
     }
     

@@ -13,7 +13,7 @@ public class AuthManager : MonoBehaviour
     public string IdToken => auth?.IdToken;
     public bool IsSignedIn => auth?.IsSignedIn ?? false;
     public bool IsGuest => auth?.IsAnonymous ?? false;
-    public bool IsEmailVerified => !IsGuest;
+    public bool IsEmailVerified => auth?.EmailVerified ?? false;
 
     private bool firebaseReady = false;
     public bool FirebaseReady => firebaseReady;
@@ -45,16 +45,23 @@ public class AuthManager : MonoBehaviour
 
         try
         {
+            Debug.Log($"[AuthManager] Attempting sign-in for email: {email}");
             bool success = await auth.SignInWithEmailPassword(email, password);
             if (success)
             {
+                Debug.Log($"[AuthManager] Sign-in successful for user: {auth.UserId}");
                 await PlayerDataManager.Instance.LoadOrCreateUser();
+                return true;
             }
-            return success;
+            else
+            {
+                Debug.LogError("[AuthManager] Sign-in returned false");
+                return false;
+            }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Sign in failed: {ex.Message}");
+            Debug.LogError($"[AuthManager] Sign in failed with exception: {ex.Message}\nStackTrace: {ex.StackTrace}");
             return false;
         }
     }
@@ -113,9 +120,21 @@ public class AuthManager : MonoBehaviour
 
     public async Task ResendVerificationEmail()
     {
-        // REST API doesn't support email verification easily
-        // For WebGL, you may need to implement custom email verification
-        Debug.LogWarning("Email verification not yet implemented for REST API");
-        await Task.CompletedTask;
+        if (!IsSignedIn || IsGuest)
+        {
+            Debug.LogError("User not signed in or is a guest");
+            return;
+        }
+
+        try
+        {
+            Debug.Log("[AuthManager] Sending verification email...");
+            await auth.SendEmailVerification();
+            Debug.Log("[AuthManager] Verification email sent successfully");
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[AuthManager] Failed to send verification email: {ex.Message}");
+        }
     }
 }

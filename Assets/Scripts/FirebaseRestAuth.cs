@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.Networking;
 using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Collections;
 
 [System.Serializable]
 public class AuthResponse
@@ -20,7 +21,7 @@ public class SignUpResponse
     public string localId;
 }
 
-public class FirebaseRestAuth
+public class FirebaseRestAuth : MonoBehaviour
 {
     private const string PROJECT_ID = "flappy-bird-ce77c";
     private const string SIGN_UP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=";
@@ -31,13 +32,32 @@ public class FirebaseRestAuth
     public string UserId { get; private set; }
     public string IdToken { get; private set; }
     public string Email { get; private set; }
+    public bool EmailVerified { get; private set; }
     public bool IsSignedIn => !string.IsNullOrEmpty(IdToken);
     public bool IsAnonymous { get; private set; }
+    
+    private static GameObject coroutineRunner;
 
     public FirebaseRestAuth(string webApiKey)
     {
         apiKey = webApiKey;
         LoadTokenFromStorage();
+        EnsureCoroutineRunner();
+    }
+    
+    private static void EnsureCoroutineRunner()
+    {
+        if (coroutineRunner == null)
+        {
+            coroutineRunner = new GameObject("FirebaseRestAuthCoroutineRunner");
+            coroutineRunner.AddComponent<CoroutineRunner>();
+            GameObject.DontDestroyOnLoad(coroutineRunner);
+        }
+    }
+    
+    private class CoroutineRunner : MonoBehaviour
+    {
+        // Just exists to run coroutines
     }
 
     public async Task<bool> SignUpWithEmailPassword(string email, string password)
@@ -58,6 +78,7 @@ public class FirebaseRestAuth
                 IdToken = response.idToken;
                 UserId = response.localId;
                 Email = response.email;
+                EmailVerified = false; // Newly created accounts are not verified
                 IsAnonymous = false;
                 SaveTokenToStorage();
                 return true;
@@ -82,21 +103,36 @@ public class FirebaseRestAuth
 
         try
         {
+            Debug.Log("[FirebaseRestAuth] Calling PostRequest for sign-in...");
             var response = await PostRequest<AuthResponse>(SIGN_IN_URL + apiKey, requestData);
+            
+            Debug.Log($"[FirebaseRestAuth] PostRequest returned: {(response == null ? "null" : "object")}");
             
             if (response != null)
             {
+                Debug.Log($"[FirebaseRestAuth] Response fields - idToken: {(string.IsNullOrEmpty(response.idToken) ? "NULL/EMPTY" : "HAS VALUE")}");
+                Debug.Log($"[FirebaseRestAuth] Response fields - localId: {response.localId}");
+                Debug.Log($"[FirebaseRestAuth] Response fields - email: {response.email}");
+                Debug.Log($"[FirebaseRestAuth] Response fields - emailVerified: {response.emailVerified}");
+                
                 IdToken = response.idToken;
                 UserId = response.localId;
                 Email = response.email;
+                EmailVerified = response.emailVerified;
                 IsAnonymous = false;
                 SaveTokenToStorage();
+                
+                Debug.Log($"[FirebaseRestAuth] Sign-in successful! Token saved. IsSignedIn: {IsSignedIn}, EmailVerified: {EmailVerified}");
                 return true;
+            }
+            else
+            {
+                Debug.LogError("[FirebaseRestAuth] PostRequest returned null!");
             }
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Sign in failed: {ex.Message}");
+            Debug.LogError($"[FirebaseRestAuth] Sign in failed: {ex.Message}\n{ex.StackTrace}");
         }
         
         return false;
@@ -127,6 +163,8 @@ public class FirebaseRestAuth
 
     private async Task<T> PostRequest<T>(string url, Dictionary<string, object> data) where T : class
     {
+        Debug.Log("[PostRequest] Starting PostRequest method");
+        
         // Manually build JSON string to avoid serialization issues
         string json = "{";
         var keys = new List<string>(data.Keys);
@@ -156,31 +194,73 @@ public class FirebaseRestAuth
         json += "}";
         
         Debug.Log($"Sending JSON: {json}");
+        Debug.Log($"Sending to URL: {url}");
         
-        using (UnityWebRequest request = new UnityWebRequest(url, "POST"))
+        var result = new TaskCompletionSource<T>();
+        
+        EnsureCoroutineRunner();
+        coroutineRunner.GetComponent<CoroutineRunner>().StartCoroutine(PostRequestCoroutine<T>(url, json, (res) => 
         {
-            request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.SetRequestHeader("Referer", "http://localhost");
-
-            var asyncOp = request.SendWebRequest();
-            
-            while (!asyncOp.isDone)
+            Debug.Log("[PostRequest] Callback received with result: " + (res == null ? "null" : "object"));
+            result.SetResult(res);
+        }));
+        
+        Debug.Log("[PostRequest] Waiting for coroutine result...");
+        return await result.Task;
+    }
+    
+    private IEnumerator PostRequestCoroutine<T>(string url, string json, System.Action<T> callback) where T : class
+    {
+        Debug.Log("[PostRequestCoroutine] Starting coroutine");
+        
+        var request = new UnityWebRequest(url, "POST");
+        request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
+        request.downloadHandler = new DownloadHandlerBuffer();
+        request.SetRequestHeader("Content-Type", "application/json");
+        
+        Debug.Log("[PostRequestCoroutine] Sending request...");
+        yield return request.SendWebRequest();
+        
+        Debug.Log("[PostRequestCoroutine] Request completed");
+        Debug.Log($"[PostRequest] Request result: {request.result}");
+        Debug.Log($"[PostRequest] Response Code: {request.responseCode}");
+        
+        string responseText = request.downloadHandler?.text ?? "";
+        Debug.Log($"[PostRequest] Response text length: {responseText.Length}");
+        Debug.Log($"[PostRequest] Full response text: {responseText}");
+        
+        T result = null;
+        if (request.result == UnityWebRequest.Result.Success)
+        {
+            Debug.Log($"[PostRequest] Request was successful, attempting to parse response...");
+            try
             {
-                await Task.Delay(10);
+                result = JsonUtility.FromJson<T>(responseText);
+                if (result == null)
+                {
+                    Debug.LogError("[PostRequest] JSON parsing returned null!");
+                }
+                else
+                {
+                    Debug.Log($"[PostRequest] Successfully parsed response");
+                }
             }
-
-            if (request.result == UnityWebRequest.Result.Success)
+            catch (System.Exception parseEx)
             {
-                return JsonUtility.FromJson<T>(request.downloadHandler.text);
-            }
-            else
-            {
-                Debug.LogError($"Request failed: {request.error}\n{request.downloadHandler.text}");
-                return null;
+                Debug.LogError($"[PostRequest] Failed to parse JSON: {parseEx.Message}");
             }
         }
+        else
+        {
+            Debug.LogError($"[PostRequest] Request failed - Error: {request.error}");
+            Debug.LogError($"[PostRequest] Response Code: {request.responseCode}");
+            Debug.LogError($"[PostRequest] Response: {responseText}");
+        }
+        
+        request.Dispose();
+        Debug.Log("[PostRequestCoroutine] Calling callback...");
+        callback(result);
+        Debug.Log("[PostRequestCoroutine] Callback called, coroutine ending");
     }
 
     private void SaveTokenToStorage()
@@ -199,5 +279,42 @@ public class FirebaseRestAuth
         UserId = "";
         Email = "";
         IsAnonymous = false;
+    }
+
+    public async Task SendEmailVerification()
+    {
+        if (string.IsNullOrEmpty(IdToken))
+        {
+            throw new System.Exception("User not signed in - no ID token available");
+        }
+
+        // Firebase Identity Toolkit API for sending verification email
+        const string SEND_VERIFICATION_EMAIL_URL = "https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=";
+        
+        var requestData = new Dictionary<string, object>
+        {
+            { "requestType", "VERIFY_EMAIL" },
+            { "idToken", IdToken }
+        };
+
+        try
+        {
+            var response = await PostRequest<Dictionary<string, object>>(SEND_VERIFICATION_EMAIL_URL + apiKey, requestData);
+            
+            if (response != null)
+            {
+                Debug.Log("[SendEmailVerification] Verification email sent successfully");
+                return;
+            }
+            else
+            {
+                throw new System.Exception("No response from email verification endpoint");
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[SendEmailVerification] Failed: {ex.Message}");
+            throw;
+        }
     }
 }

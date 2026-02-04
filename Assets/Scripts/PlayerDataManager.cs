@@ -93,8 +93,14 @@ public class PlayerDataManager : MonoBehaviour
             if (userData == null)
             {
                 Debug.Log("User document doesn't exist, creating new profile");
-                Profile = new PlayerProfile();
+                Profile = new PlayerProfile
+                {
+                    username = AuthManager.Instance.Email?.Split('@')[0] ?? "Player",
+                    email = AuthManager.Instance.Email ?? "",
+                    dailyHighScoreDate = DateTime.UtcNow.ToString("yyyyMMdd")
+                };
                 await SaveProfile();
+                Debug.Log($"New profile created for {Profile.username}");
             }
             else
             {
@@ -155,6 +161,8 @@ public class PlayerDataManager : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[SaveProfile] uid={uid}, db={db}, Profile.username={Profile.username}");
+
         try
         {
             var data = new Dictionary<string, object>
@@ -177,22 +185,34 @@ public class PlayerDataManager : MonoBehaviour
         }
         catch (System.Exception ex)
         {
-            Debug.LogError($"Failed to save profile: {ex.Message}");
+            Debug.LogError($"Failed to save profile: {ex.Message}\n{ex.StackTrace}");
         }
+    }
+
+    // Fire-and-forget async wrapper for synchronous methods
+    private async void SaveProfileAsync()
+    {
+        await SaveProfile();
+    }
+
+    // Fire-and-forget async wrapper for synchronous methods
+    private async void SubmitScoreToLeaderboardAsync(int score, bool isDaily)
+    {
+        await SubmitScoreToLeaderboard(score, isDaily);
     }
 
     public void AddRun()
     {
         if (Profile == null) return;
         Profile.totalRuns++;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public void AddPipe()
     {
         if (Profile == null) return;
         Profile.totalPipes++;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public void TryUpdateHighScore(int score, bool isDaily)
@@ -212,8 +232,8 @@ public class PlayerDataManager : MonoBehaviour
             if (score > Profile.dailyHighScore)
             {
                 Profile.dailyHighScore = score;
-                _ = SaveProfile();
-                _ = SubmitScoreToLeaderboard(Profile.dailyHighScore, true);
+                SaveProfileAsync();
+                SubmitScoreToLeaderboardAsync(Profile.dailyHighScore, true);
             }
 
             if (AuthManager.Instance.IsGuest)
@@ -226,8 +246,8 @@ public class PlayerDataManager : MonoBehaviour
             if (score > Profile.normalHighScore)
             {
                 Profile.normalHighScore = score;
-                _ = SaveProfile();
-                _ = SubmitScoreToLeaderboard(Profile.normalHighScore, false);
+                SaveProfileAsync();
+                SubmitScoreToLeaderboardAsync(Profile.normalHighScore, false);
             }
 
             if (AuthManager.Instance.IsGuest)
@@ -245,6 +265,8 @@ public class PlayerDataManager : MonoBehaviour
             return;
         }
 
+        Debug.Log($"[SubmitScoreToLeaderboard] Score: {score}, isDaily: {isDaily}");
+
         try
         {
             if (isDaily)
@@ -257,9 +279,9 @@ public class PlayerDataManager : MonoBehaviour
                     { "score", score },
                     { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }
                 };
-                Debug.Log($"Submitting daily score to leaderboards/daily/{today}/{uid}");
+                Debug.Log($"[SubmitScoreToLeaderboard] Submitting DAILY score {score} to leaderboards/daily/{today}/{uid}");
                 await db.SetDocument($"leaderboards/daily/{today}", uid, leaderboardData);
-                Debug.Log($"Daily score submitted to leaderboard: {score}");
+                Debug.Log($"[SubmitScoreToLeaderboard] Daily score submitted to leaderboard: {score}");
             }
             else
             {
@@ -270,9 +292,9 @@ public class PlayerDataManager : MonoBehaviour
                     { "score", score },
                     { "timestamp", DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() }
                 };
-                Debug.Log($"Submitting normal score to leaderboards/normal/scores/{uid}");
+                Debug.Log($"[SubmitScoreToLeaderboard] Submitting NORMAL score {score} to leaderboards/normal/scores/{uid}");
                 await db.SetDocument("leaderboards/normal/scores", uid, leaderboardData);
-                Debug.Log($"Normal score submitted to leaderboard: {score}");
+                Debug.Log($"[SubmitScoreToLeaderboard] Normal score submitted to leaderboard: {score}");
             }
         }
         catch (System.Exception ex)
@@ -285,28 +307,28 @@ public class PlayerDataManager : MonoBehaviour
     {
         if (Profile == null) return;
         Profile.musicVolume = value;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public void UpdateSoundFXVolume(float value)
     {
         if (Profile == null) return;
         Profile.soundFXVolume = value;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public void UpdateMusicMute(bool muted)
     {
         if (Profile == null) return;
         Profile.musicMuted = muted;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public void UpdateSoundFXMute(bool muted)
     {
         if (Profile == null) return;
         Profile.soundFXMuted = muted;
-        _ = SaveProfile();
+        SaveProfileAsync();
     }
 
     public async Task SyncGuestScoresToAccount()

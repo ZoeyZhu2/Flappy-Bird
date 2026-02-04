@@ -12,7 +12,7 @@ public class StartScreenUIManager : MonoBehaviour
     [SerializeField] private Button dailyButton;
     [SerializeField] private Button leaderboardButton;
     [SerializeField] private Button signOutButton;
-    [SerializeField] private TMP_Text signOutButtonText;
+    // [SerializeField] private TMP_Text signOutButtonText;
     [SerializeField] private Button quitButton;
 
     //Audio
