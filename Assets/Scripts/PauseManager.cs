@@ -98,6 +98,10 @@ public class PauseManager : MonoBehaviour
         {
             inputActions.Player.Disable(); // prevent gameplay inputs (e.g., jump) while paused
         }
+        if (logicScript != null && logicScript.getIsGameOver())
+        {
+            logicScript.hideGameOverScreen();
+        }
     }
 
     public void Resume()
@@ -111,6 +115,10 @@ public class PauseManager : MonoBehaviour
         if (inputActions != null)
         {
             inputActions.Player.Enable(); // restore gameplay inputs
+        }
+        if (logicScript != null && logicScript.getIsGameOver())
+        {
+            logicScript.showGameOverScreen();
         }
     }
 

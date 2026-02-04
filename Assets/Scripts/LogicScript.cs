@@ -334,4 +334,19 @@ public class LogicScript : MonoBehaviour
     {
         yield return new WaitForSecondsRealtime(3);
     }
+
+    public bool getIsGameOver()
+    {
+        return isGameOver;
+    }
+
+    public void hideGameOverScreen()
+    {
+        gameOverScreen.SetActive(false);
+    }
+
+    public void showGameOverScreen()
+    {
+        gameOverScreen.SetActive(true);
+    }
 }
