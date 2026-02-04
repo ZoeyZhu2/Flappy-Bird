@@ -104,32 +104,55 @@ public class FirebaseRestFirestore
     
     private IEnumerator SetDocumentCoroutine(string url, string json, TaskCompletionSource<bool> tcs)
     {
-        using (UnityWebRequest request = new UnityWebRequest(url, "PATCH"))
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries)
         {
-            request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
-            request.downloadHandler = new DownloadHandlerBuffer();
-            request.SetRequestHeader("Content-Type", "application/json");
-            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-
-            Debug.Log($"[SetDocumentCoroutine] Sending PATCH request to {url}");
-            yield return request.SendWebRequest();
-            
-            Debug.Log($"[SetDocumentCoroutine] Request completed. Result: {request.result}");
-
-            bool success = false;
-            if (request.result == UnityWebRequest.Result.Success)
+            using (UnityWebRequest request = new UnityWebRequest(url, "PATCH"))
             {
-                Debug.Log($"[SetDocumentCoroutine] Success!");
-                success = true;
+                request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
+                request.downloadHandler = new DownloadHandlerBuffer();
+                request.SetRequestHeader("Content-Type", "application/json");
+                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+                request.timeout = 30; // 30 second timeout
+
+                Debug.Log($"[SetDocumentCoroutine] Sending PATCH request to {url} (attempt {retryCount + 1}/{maxRetries})");
+                yield return request.SendWebRequest();
+                
+                Debug.Log($"[SetDocumentCoroutine] Request completed. Result: {request.result}");
+
+                bool success = false;
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    Debug.Log($"[SetDocumentCoroutine] Success!");
+                    success = true;
+                }
+                else
+                {
+                    // Check if this is a retryable error
+                    if (request.responseCode >= 500 || 
+                        request.error.Contains("Broken pipe") || 
+                        request.error.Contains("timeout") ||
+                        request.error.Contains("Cannot connect"))
+                    {
+                        retryCount++;
+                        Debug.LogWarning($"[SetDocumentCoroutine] Retryable error: {request.error}. Retrying in 1 second...");
+                        yield return new WaitForSeconds(1f);
+                        continue;
+                    }
+                    
+                    Debug.LogError($"[SetDocumentCoroutine] Failed: {request.error}\nResponse: {request.downloadHandler.text}");
+                    success = false;
+                }
+                
+                tcs.SetResult(success);
+                yield break;
             }
-            else
-            {
-                Debug.LogError($"[SetDocumentCoroutine] Failed: {request.error}\nResponse: {request.downloadHandler.text}");
-                success = false;
-            }
-            
-            tcs.SetResult(success);
         }
+        
+        Debug.LogError("[SetDocumentCoroutine] Max retries exceeded");
+        tcs.SetResult(false);
     }
 
     private string EscapeJson(string str)
@@ -165,33 +188,57 @@ public class FirebaseRestFirestore
     
     private IEnumerator GetDocumentCoroutine(string url, TaskCompletionSource<Dictionary<string, object>> tcs)
     {
-        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries)
         {
-            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-            
-            yield return request.SendWebRequest();
-            
-            Debug.Log($"[GetDocumentCoroutine] Request completed. Result: {request.result}");
-            
-            Dictionary<string, object> result = null;
-            
-            if (request.result == UnityWebRequest.Result.Success)
+            using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                string responseText = request.downloadHandler.text;
-                Debug.Log($"[GetDocumentCoroutine] Success response");
+                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+                request.timeout = 30; // 30 second timeout
                 
-                // Manually parse the fields from the JSON response
-                result = ParseFirestoreResponse(responseText);
+                Debug.Log($"[GetDocumentCoroutine] Sending request (attempt {retryCount + 1}/{maxRetries})...");
+                yield return request.SendWebRequest();
+                
+                Debug.Log($"[GetDocumentCoroutine] Request completed. Result: {request.result}");
+                
+                Dictionary<string, object> result = null;
+                
+                if (request.result == UnityWebRequest.Result.Success)
+                {
+                    string responseText = request.downloadHandler.text;
+                    Debug.Log($"[GetDocumentCoroutine] Success response");
+                    
+                    // Manually parse the fields from the JSON response
+                    result = ParseFirestoreResponse(responseText);
+                }
+                else
+                {
+                    // Check if this is a retryable error
+                    if (request.responseCode >= 500 || 
+                        request.error.Contains("Broken pipe") || 
+                        request.error.Contains("timeout") ||
+                        request.error.Contains("Cannot connect"))
+                    {
+                        retryCount++;
+                        Debug.LogWarning($"[GetDocumentCoroutine] Retryable error: {request.error}. Retrying in 1 second...");
+                        yield return new WaitForSeconds(1f);
+                        continue;
+                    }
+                    
+                    Debug.LogWarning($"[GetDocumentCoroutine] Request failed. Error: {request.error}, Code: {request.responseCode}");
+                    // Return null on 404 or other errors - caller will handle creating new document
+                    result = null;
+                }
+                
+                tcs.SetResult(result);
+                yield break;
             }
-            else
-            {
-                Debug.LogWarning($"[GetDocumentCoroutine] Request failed. Error: {request.error}, Code: {request.responseCode}");
-                // Return null on 404 or other errors - caller will handle creating new document
-                result = null;
-            }
-            
-            tcs.SetResult(result);
         }
+        
+        Debug.LogError("[GetDocumentCoroutine] Max retries exceeded");
+        tcs.SetResult(null);
     }
 
     private Dictionary<string, object> ParseFirestoreResponse(string json)
@@ -357,72 +404,109 @@ public class FirebaseRestFirestore
     
     private IEnumerator QueryDocumentsCoroutine(string url, TaskCompletionSource<List<Dictionary<string, object>>> tcs)
     {
-        using (UnityWebRequest request = UnityWebRequest.Get(url))
+        int maxRetries = 3;
+        int retryCount = 0;
+        
+        while (retryCount < maxRetries)
         {
-            request.SetRequestHeader("Authorization", $"Bearer {idToken}");
-
-            yield return request.SendWebRequest();
-
-            var results = new List<Dictionary<string, object>>();
-            
-            if (request.result == UnityWebRequest.Result.Success)
+            using (UnityWebRequest request = UnityWebRequest.Get(url))
             {
-                string responseText = request.downloadHandler.text;
+                request.SetRequestHeader("Authorization", $"Bearer {idToken}");
+                request.timeout = 30; // 30 second timeout
+
+                Debug.Log($"[QueryDocumentsCoroutine] Sending request (attempt {retryCount + 1}/{maxRetries})...");
+                yield return request.SendWebRequest();
+
+                var results = new List<Dictionary<string, object>>();
                 
-                Debug.Log($"[QueryDocumentsCoroutine] Response length: {responseText.Length}");
-                
-                // Find all document objects - look for each complete document object
-                // Documents are in the "documents" array, each starting with "name" field
-                int docIndex = 0;
-                while (true)
+                if (request.result == UnityWebRequest.Result.Success)
                 {
-                    // Find next document start - look for "name": which indicates start of a document
-                    int nameIndex = responseText.IndexOf("\"name\"", docIndex);
-                    if (nameIndex == -1)
-                        break;
+                    string responseText = request.downloadHandler.text;
                     
-                    // Backtrack to find the opening brace of this document object
-                    int docStart = nameIndex - 1;
-                    while (docStart >= 0 && responseText[docStart] != '{')
-                        docStart--;
+                    Debug.Log($"[QueryDocumentsCoroutine] Response length: {responseText.Length}");
+                    Debug.Log($"[QueryDocumentsCoroutine] First 500 chars: {responseText.Substring(0, Mathf.Min(500, responseText.Length))}");
                     
-                    if (docStart < 0)
+                    // Find all document objects - look for each complete document object
+                    // Documents are in the "documents" array, each starting with "name" field
+                    int docIndex = 0;
+                    int docCount = 0;
+                    while (true)
                     {
-                        docIndex = nameIndex + 1;
-                        continue;
+                        // Find next document start - look for "name": which indicates start of a document
+                        int nameIndex = responseText.IndexOf("\"name\"", docIndex);
+                        if (nameIndex == -1)
+                            break;
+                        
+                        docCount++;
+                        Debug.Log($"[QueryDocumentsCoroutine] Found document {docCount} at nameIndex: {nameIndex}");
+                        
+                        // Backtrack to find the opening brace of this document object
+                        int docStart = nameIndex - 1;
+                        while (docStart >= 0 && responseText[docStart] != '{')
+                            docStart--;
+                        
+                        if (docStart < 0)
+                        {
+                            docIndex = nameIndex + 1;
+                            continue;
+                        }
+                        
+                        // Find the matching closing brace for this document
+                        int docEnd = FindMatchingBrace(responseText, docStart);
+                        if (docEnd == -1)
+                        {
+                            docIndex = nameIndex + 1;
+                            continue;
+                        }
+                        
+                        // Extract this document
+                        string docStr = responseText.Substring(docStart, docEnd - docStart + 1);
+                        
+                        // Parse this document using ParseFirestoreResponse
+                        var doc = ParseFirestoreResponse(docStr);
+                        if (doc.Count > 0)
+                        {
+                            results.Add(doc);
+                            Debug.Log($"[QueryDocumentsCoroutine] Added document {results.Count} with {doc.Count} fields");
+                            foreach (var kvp in doc)
+                            {
+                                Debug.Log($"  {kvp.Key} = {kvp.Value}");
+                            }
+                        }
+                        else
+                        {
+                            Debug.Log($"[QueryDocumentsCoroutine] Document {docCount} parsed but had 0 fields");
+                        }
+                        
+                        docIndex = docEnd + 1;
                     }
-                    
-                    // Find the matching closing brace for this document
-                    int docEnd = FindMatchingBrace(responseText, docStart);
-                    if (docEnd == -1)
-                    {
-                        docIndex = nameIndex + 1;
-                        continue;
-                    }
-                    
-                    // Extract this document
-                    string docStr = responseText.Substring(docStart, docEnd - docStart + 1);
-                    
-                    // Parse this document using ParseFirestoreResponse
-                    var doc = ParseFirestoreResponse(docStr);
-                    if (doc.Count > 0)
-                    {
-                        results.Add(doc);
-                        Debug.Log($"[QueryDocumentsCoroutine] Added document with {doc.Count} fields");
-                    }
-                    
-                    docIndex = docEnd + 1;
-                }
 
-                Debug.Log($"[QueryDocumentsCoroutine] Parsed {results.Count} documents");
+                    Debug.Log($"[QueryDocumentsCoroutine] Total documents found: {docCount}, parsed: {results.Count}");
+                }
+                else
+                {
+                    // Check if this is a retryable error
+                    if (request.responseCode >= 500 || 
+                        request.error.Contains("Broken pipe") || 
+                        request.error.Contains("timeout") ||
+                        request.error.Contains("Cannot connect"))
+                    {
+                        retryCount++;
+                        Debug.LogWarning($"[QueryDocumentsCoroutine] Retryable error: {request.error}. Retrying in 1 second...");
+                        yield return new WaitForSeconds(1f);
+                        continue;
+                    }
+                    
+                    Debug.LogError($"[QueryDocumentsCoroutine] Query failed: {request.error}");
+                }
+                
+                tcs.SetResult(results);
+                yield break;
             }
-            else
-            {
-                Debug.LogError($"[QueryDocumentsCoroutine] Query failed: {request.error}");
-            }
-            
-            tcs.SetResult(results);
         }
+        
+        Debug.LogError("[QueryDocumentsCoroutine] Max retries exceeded");
+        tcs.SetResult(new List<Dictionary<string, object>>());
     }
     
     private Dictionary<string, object> ParseSingleDocument(string fieldsContent)

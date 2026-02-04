@@ -213,54 +213,86 @@ public class FirebaseRestAuth : MonoBehaviour
     {
         Debug.Log("[PostRequestCoroutine] Starting coroutine");
         
-        var request = new UnityWebRequest(url, "POST");
-        request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
-        request.downloadHandler = new DownloadHandlerBuffer();
-        request.SetRequestHeader("Content-Type", "application/json");
+        int maxRetries = 3;
+        int retryCount = 0;
         
-        Debug.Log("[PostRequestCoroutine] Sending request...");
-        yield return request.SendWebRequest();
-        
-        Debug.Log("[PostRequestCoroutine] Request completed");
-        Debug.Log($"[PostRequest] Request result: {request.result}");
-        Debug.Log($"[PostRequest] Response Code: {request.responseCode}");
-        
-        string responseText = request.downloadHandler?.text ?? "";
-        Debug.Log($"[PostRequest] Response text length: {responseText.Length}");
-        Debug.Log($"[PostRequest] Full response text: {responseText}");
-        
-        T result = null;
-        if (request.result == UnityWebRequest.Result.Success)
+        while (retryCount < maxRetries)
         {
-            Debug.Log($"[PostRequest] Request was successful, attempting to parse response...");
-            try
+            var request = new UnityWebRequest(url, "POST");
+            request.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(json));
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+            request.timeout = 30; // 30 second timeout
+            
+            Debug.Log($"[PostRequestCoroutine] Sending request (attempt {retryCount + 1}/{maxRetries})...");
+            yield return request.SendWebRequest();
+            
+            Debug.Log("[PostRequestCoroutine] Request completed");
+            Debug.Log($"[PostRequest] Request result: {request.result}");
+            Debug.Log($"[PostRequest] Response Code: {request.responseCode}");
+            
+            string responseText = request.downloadHandler?.text ?? "";
+            Debug.Log($"[PostRequest] Response text length: {responseText.Length}");
+            Debug.Log($"[PostRequest] Full response text: {responseText}");
+            
+            T result = null;
+            
+            // Check if this is a retryable error
+            if (request.result != UnityWebRequest.Result.Success)
             {
-                result = JsonUtility.FromJson<T>(responseText);
-                if (result == null)
+                // Retryable errors: network errors, timeouts, 500-599 server errors
+                if (request.responseCode >= 500 || 
+                    request.error.Contains("Broken pipe") || 
+                    request.error.Contains("timeout") ||
+                    request.error.Contains("Cannot connect"))
                 {
-                    Debug.LogError("[PostRequest] JSON parsing returned null!");
-                }
-                else
-                {
-                    Debug.Log($"[PostRequest] Successfully parsed response");
+                    retryCount++;
+                    Debug.LogWarning($"[PostRequest] Retryable error detected: {request.error}. Retrying in 1 second...");
+                    request.Dispose();
+                    yield return new WaitForSeconds(1f);
+                    continue;
                 }
             }
-            catch (System.Exception parseEx)
+            
+            if (request.result == UnityWebRequest.Result.Success)
             {
-                Debug.LogError($"[PostRequest] Failed to parse JSON: {parseEx.Message}");
+                Debug.Log($"[PostRequest] Request was successful, attempting to parse response...");
+                try
+                {
+                    result = JsonUtility.FromJson<T>(responseText);
+                    if (result == null)
+                    {
+                        Debug.LogError("[PostRequest] JSON parsing returned null!");
+                    }
+                    else
+                    {
+                        Debug.Log($"[PostRequest] Successfully parsed response");
+                    }
+                }
+                catch (System.Exception parseEx)
+                {
+                    Debug.LogError($"[PostRequest] Failed to parse JSON: {parseEx.Message}");
+                }
             }
-        }
-        else
-        {
-            Debug.LogError($"[PostRequest] Request failed - Error: {request.error}");
-            Debug.LogError($"[PostRequest] Response Code: {request.responseCode}");
-            Debug.LogError($"[PostRequest] Response: {responseText}");
+            else
+            {
+                Debug.LogError($"[PostRequest] Request failed - Error: {request.error}");
+                Debug.LogError($"[PostRequest] Response Code: {request.responseCode}");
+                Debug.LogError($"[PostRequest] Response: {responseText}");
+            }
+            
+            request.Dispose();
+            Debug.Log("[PostRequestCoroutine] Calling callback...");
+            callback(result);
+            Debug.Log("[PostRequestCoroutine] Callback called, coroutine ending");
+            break;
         }
         
-        request.Dispose();
-        Debug.Log("[PostRequestCoroutine] Calling callback...");
-        callback(result);
-        Debug.Log("[PostRequestCoroutine] Callback called, coroutine ending");
+        if (retryCount >= maxRetries)
+        {
+            Debug.LogError("[PostRequestCoroutine] Max retries exceeded");
+            callback(null);
+        }
     }
 
     private void SaveTokenToStorage()

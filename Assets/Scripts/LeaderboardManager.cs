@@ -25,6 +25,7 @@ public class LeaderboardManager : MonoBehaviour
     private FirebaseRestFirestore db;
     private List<LeaderboardEntry> cachedLeaderboard = new();
     private float lastLoadTime = -999f;
+    private bool cachedIsDaily = false; // Track which type was cached
 
     void Start()
     {
@@ -79,8 +80,8 @@ public class LeaderboardManager : MonoBehaviour
             return;
         }
 
-        // Return cached data if still valid
-        if (Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds)
+        // Return cached data if still valid AND it's the same leaderboard type
+        if (Time.realtimeSinceStartup - lastLoadTime < cacheTimeSeconds && cachedIsDaily == isDaily)
         {
             DisplayLeaderboard();
             return;
@@ -97,9 +98,19 @@ public class LeaderboardManager : MonoBehaviour
                 Debug.Log($"Querying daily leaderboard path: leaderboards/daily/{today}");
                 var results = await db.QueryDocuments($"leaderboards/daily/{today}");
                 Debug.Log($"Daily query returned {results.Count} results");
+                
                 if (results.Count == 0)
                 {
                     Debug.LogWarning("No scores found for today's leaderboard");
+                }
+                
+                foreach (var doc in results)
+                {
+                    Debug.Log($"Daily doc keys: {string.Join(", ", doc.Keys)}");
+                    foreach (var kvp in doc)
+                    {
+                        Debug.Log($"  {kvp.Key} = {kvp.Value}");
+                    }
                 }
 
                 foreach (var doc in results)
@@ -148,6 +159,7 @@ public class LeaderboardManager : MonoBehaviour
             }
 
             lastLoadTime = Time.realtimeSinceStartup;
+            cachedIsDaily = isDaily;  // Track which type is now cached
             DisplayLeaderboard();
         }
         catch (System.Exception e)
