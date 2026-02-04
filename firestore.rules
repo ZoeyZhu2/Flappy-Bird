@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // User profiles - only users can read/write their own profile
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+
+    // Player data (scores, stats) - owned by users
+    match /users/{userId}/playerData/{document=**} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId);
+    }
+
+    // Leaderboard data - public read, controlled write
+    match /leaderboards/{leaderboardId}/entries/{entryId} {
+      allow read: if true; // Anyone can read leaderboard entries
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Daily leaderboard - public read, controlled write
+    match /dailyLeaderboards/{date}/entries/{entryId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    }
+
+    // Game settings - public read
+    match /settings/{document=**} {
+      allow read: if true;
+      allow write: if false; // Admins update via backend only
+    }
+
+    // Deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
