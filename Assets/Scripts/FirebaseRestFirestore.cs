@@ -31,27 +31,10 @@ public class FirebaseRestFirestore
     private const string DATABASE_ID = "(default)";
     private const string BASE_URL = "https://firestore.googleapis.com/v1/projects";
     private string idToken;
-    private static GameObject coroutineRunner;
 
     public FirebaseRestFirestore(string token)
     {
         idToken = token;
-        EnsureCoroutineRunner();
-    }
-    
-    private static void EnsureCoroutineRunner()
-    {
-        if (coroutineRunner == null)
-        {
-            coroutineRunner = new GameObject("FirebaseRestFirestoreCoroutineRunner");
-            coroutineRunner.AddComponent<CoroutineRunner>();
-            GameObject.DontDestroyOnLoad(coroutineRunner);
-        }
-    }
-    
-    private class CoroutineRunner : MonoBehaviour
-    {
-        // Just exists to run coroutines
     }
 
     public async Task<bool> SetDocument(string collection, string documentId, Dictionary<string, object> data)
@@ -87,9 +70,8 @@ public class FirebaseRestFirestore
         Debug.Log($"[SetDocument] Writing to {collection}/{documentId}");
 
         var tcs = new TaskCompletionSource<bool>();
-        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
         
-        runner.StartCoroutine(SetDocumentCoroutine(url, json, tcs));
+        CoroutineHelper.Instance.StartCoroutine(SetDocumentCoroutine(url, json, tcs));
         
         try
         {
@@ -169,9 +151,8 @@ public class FirebaseRestFirestore
         Debug.Log($"[GetDocument] Requesting: {url}");
         
         var tcs = new TaskCompletionSource<Dictionary<string, object>>();
-        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
         
-        runner.StartCoroutine(GetDocumentCoroutine(url, tcs));
+        CoroutineHelper.Instance.StartCoroutine(GetDocumentCoroutine(url, tcs));
         
         try
         {
@@ -387,9 +368,8 @@ public class FirebaseRestFirestore
         string url = $"{BASE_URL}/{PROJECT_ID}/databases/{DATABASE_ID}/documents/{collection}";
 
         var tcs = new TaskCompletionSource<List<Dictionary<string, object>>>();
-        var runner = coroutineRunner.GetComponent<CoroutineRunner>();
         
-        runner.StartCoroutine(QueryDocumentsCoroutine(url, tcs));
+        CoroutineHelper.Instance.StartCoroutine(QueryDocumentsCoroutine(url, tcs));
         
         try
         {

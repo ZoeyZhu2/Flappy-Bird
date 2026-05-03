@@ -35,29 +35,11 @@ public class FirebaseRestAuth : MonoBehaviour
     public bool EmailVerified { get; private set; }
     public bool IsSignedIn => !string.IsNullOrEmpty(IdToken);
     public bool IsAnonymous { get; private set; }
-    
-    private static GameObject coroutineRunner;
 
     public FirebaseRestAuth(string webApiKey)
     {
         apiKey = webApiKey;
         LoadTokenFromStorage();
-        EnsureCoroutineRunner();
-    }
-    
-    private static void EnsureCoroutineRunner()
-    {
-        if (coroutineRunner == null)
-        {
-            coroutineRunner = new GameObject("FirebaseRestAuthCoroutineRunner");
-            coroutineRunner.AddComponent<CoroutineRunner>();
-            GameObject.DontDestroyOnLoad(coroutineRunner);
-        }
-    }
-    
-    private class CoroutineRunner : MonoBehaviour
-    {
-        // Just exists to run coroutines
     }
 
     public async Task<bool> SignUpWithEmailPassword(string email, string password)
@@ -198,8 +180,7 @@ public class FirebaseRestAuth : MonoBehaviour
         
         var result = new TaskCompletionSource<T>();
         
-        EnsureCoroutineRunner();
-        coroutineRunner.GetComponent<CoroutineRunner>().StartCoroutine(PostRequestCoroutine<T>(url, json, (res) => 
+        CoroutineHelper.Instance.StartCoroutine(PostRequestCoroutine<T>(url, json, (res) => 
         {
             Debug.Log("[PostRequest] Callback received with result: " + (res == null ? "null" : "object"));
             result.SetResult(res);
