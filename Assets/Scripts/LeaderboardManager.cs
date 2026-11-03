@@ -57,16 +57,13 @@ public class LeaderboardManager : MonoBehaviour
         Debug.Log($"Firestore DB initialized: {db != null}");
         Debug.Log($"Auth token: {AuthManager.Instance.IdToken?.Substring(0, 20)}...");
 
-        // Initialize db if needed
-        if (db == null)
+        // Always rebuild so the client uses the current user's fresh token
+        if (string.IsNullOrEmpty(AuthManager.Instance.IdToken))
         {
-            if (string.IsNullOrEmpty(AuthManager.Instance.IdToken))
-            {
-                Debug.LogError("LeaderboardManager: No auth token available!");
-                return;
-            }
-            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
+            Debug.LogError("LeaderboardManager: No auth token available!");
+            return;
         }
+        db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
 
         if (content == null)
         {

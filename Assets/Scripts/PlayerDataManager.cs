@@ -51,10 +51,8 @@ public class PlayerDataManager : MonoBehaviour
         uid = AuthManager.Instance.UserId;
 
         // Initialize Firestore with user's auth token
-        if (db == null)
-        {
-            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
-        }
+        // Always rebuild so the client uses the current user's fresh token
+        db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
 
         Profile = new PlayerProfile
         {
@@ -81,10 +79,8 @@ public class PlayerDataManager : MonoBehaviour
         }
 
         // Initialize Firestore with user's auth token
-        if (db == null)
-        {
-            db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
-        }
+        // Always rebuild so the client uses the current user's fresh token
+        db = new FirebaseRestFirestore(AuthManager.Instance.IdToken);
 
         try
         {
