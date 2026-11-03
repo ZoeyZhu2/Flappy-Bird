@@ -25,18 +25,16 @@ service cloud.firestore {
       allow write: if isOwner(userId);
     }
 
-    // Leaderboard data - public read, controlled write
-    match /leaderboards/{leaderboardId}/entries/{entryId} {
-      allow read: if true; // Anyone can read leaderboard entries
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+    // Normal leaderboard - public read, users can only write their own row
+    match /leaderboards/normal/scores/{uid} {
+      allow read: if true;
+      allow create, update: if isOwner(uid) && request.resource.data.userId == uid;
     }
 
-    // Daily leaderboard - public read, controlled write
-    match /dailyLeaderboards/{date}/entries/{entryId} {
+    // Daily leaderboard - public read, users can only write their own row
+    match /leaderboards/daily/{date}/{uid} {
       allow read: if true;
-      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create, update: if isOwner(uid) && request.resource.data.userId == uid;
     }
 
     // Game settings - public read
