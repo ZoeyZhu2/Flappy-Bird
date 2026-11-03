@@ -21,7 +21,20 @@ public class SignUpResponse
     public string localId;
 }
 
-public class FirebaseRestAuth : MonoBehaviour
+[System.Serializable]
+public class LookupUser
+{
+    public string localId;
+    public bool emailVerified;
+}
+
+[System.Serializable]
+public class LookupResponse
+{
+    public LookupUser[] users;
+}
+
+public class FirebaseRestAuth
 {
     private const string PROJECT_ID = "flappy-bird-ce77c";
     private const string SIGN_UP_URL = "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=";
@@ -292,6 +305,27 @@ public class FirebaseRestAuth : MonoBehaviour
         UserId = "";
         Email = "";
         IsAnonymous = false;
+    }
+
+    // Re-checks verification status with Firebase (EmailVerified is otherwise only set at sign-in)
+    public async Task RefreshEmailVerified()
+    {
+        if (string.IsNullOrEmpty(IdToken) || IsAnonymous) return;
+
+        try
+        {
+            var response = await PostRequest<LookupResponse>(GET_ACCOUNT_URL + apiKey,
+                new Dictionary<string, object> { { "idToken", IdToken } });
+
+            if (response?.users != null && response.users.Length > 0)
+            {
+                EmailVerified = response.users[0].emailVerified;
+            }
+        }
+        catch (System.Exception ex)
+        {
+            Debug.LogError($"[RefreshEmailVerified] Failed: {ex.Message}");
+        }
     }
 
     public async Task SendEmailVerification()

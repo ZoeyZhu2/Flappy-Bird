@@ -118,6 +118,11 @@ public class AuthManager : MonoBehaviour
         }
     }
 
+    public async Task RefreshEmailVerified()
+    {
+        if (auth != null) await auth.RefreshEmailVerified();
+    }
+
     public async Task ResendVerificationEmail()
     {
         if (!IsSignedIn || IsGuest)
