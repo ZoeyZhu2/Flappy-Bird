@@ -196,11 +196,10 @@ public class LogicScript : MonoBehaviour
             }
             
             // Show verify email warning if email not verified
-            if (!AuthManager.Instance.IsEmailVerified)
-            {
-                verifyEmailWarning.gameObject.SetActive(true);
-                resendEmailButton.gameObject.SetActive(true);
-            }
+            // Hidden until we re-check with Firebase, since the cached value is from sign-in time
+            verifyEmailWarning.gameObject.SetActive(false);
+            resendEmailButton.gameObject.SetActive(false);
+            CheckEmailVerification();
             
             // Hide guest buttons
             openCreateAccount.gameObject.SetActive(false);
@@ -321,18 +320,29 @@ public class LogicScript : MonoBehaviour
             RestartGame();
     }
 
+    private async void CheckEmailVerification()
+    {
+        await AuthManager.Instance.RefreshEmailVerified();
+
+        if (!isGameOver || AuthManager.Instance.IsGuest) return;
+
+        bool needsVerify = !AuthManager.Instance.IsEmailVerified;
+        verifyEmailWarning.gameObject.SetActive(needsVerify);
+        resendEmailButton.gameObject.SetActive(needsVerify);
+    }
+
     private async void ResendEmail()
     {
         await AuthManager.Instance.ResendVerificationEmail();
 
         verifyEmailWarning.text = "Verification Email Sent!";
-        StartCoroutine(WaitThreeSeconds());
-        verifyEmailWarning.text = "Verify Email to save score to leaderboard!";
+        StartCoroutine(RestoreVerifyWarningAfterDelay());
     }
 
-    IEnumerator WaitThreeSeconds()
+    IEnumerator RestoreVerifyWarningAfterDelay()
     {
         yield return new WaitForSecondsRealtime(3);
+        verifyEmailWarning.text = "Verify Email to save score to leaderboard!";
     }
 
     public bool getIsGameOver()
