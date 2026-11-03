@@ -10,7 +10,7 @@ public enum GameMode
 public class GameModeManager : MonoBehaviour
 {
     public static GameModeManager Instance;
-    private GameMode currentMode;
+    private GameMode currentMode = GameMode.Normal; // Default to Normal mode
     private int currentSeed;
     
     private void Awake()

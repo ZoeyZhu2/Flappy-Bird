@@ -7948,6 +7948,7 @@ MonoBehaviour:
   scoreText: {fileID: 1150202915}
   highScoreText: {fileID: 1410989701}
   gameOverScreen: {fileID: 269897091}
+  playAgainButton: {fileID: 915436250}
   newHighScore: {fileID: 1965213179}
   verifyEmailWarning: {fileID: 231163747}
   resendEmailButton: {fileID: 924295394}

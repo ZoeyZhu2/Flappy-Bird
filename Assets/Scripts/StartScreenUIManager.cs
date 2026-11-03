@@ -12,7 +12,7 @@ public class StartScreenUIManager : MonoBehaviour
     [SerializeField] private Button dailyButton;
     [SerializeField] private Button leaderboardButton;
     [SerializeField] private Button signOutButton;
-    [SerializeField] private TMP_Text signOutButtonText;
+    // [SerializeField] private TMP_Text signOutButtonText;
     [SerializeField] private Button quitButton;
 
     //Audio
@@ -39,17 +39,33 @@ public class StartScreenUIManager : MonoBehaviour
 
     public void Start()
     {
-        if (AuthManager.Instance.IsSignedIn)
+        if (signInCanvas == null)
         {
-            // User already signed in, go straight to start screen
+            Debug.LogError("StartScreenUIManager: signInCanvas is not assigned!");
+            return;
+        }
+
+        // Always show sign-in screen first, let AuthManager check if user is already logged in
+        OpenSignInScreen();
+        CloseStartScreen();
+        
+        // Check after a frame if user is signed in
+        StartCoroutine(CheckAuthStatus());
+    }
+
+    private System.Collections.IEnumerator CheckAuthStatus()
+    {
+        yield return null; // Wait one frame
+        
+        if (AuthManager.Instance != null && AuthManager.Instance.IsSignedIn)
+        {
+            Debug.Log($"User is already signed in: {AuthManager.Instance.Email}");
             OpenStartScreen();
             CloseSignInScreen();
         }
         else
         {
-            // Not signed in, show sign-in screen
-            OpenSignInScreen();
-            CloseStartScreen();
+            Debug.Log("No user signed in, keeping sign-in screen open");
         }
     }
 
@@ -92,6 +108,8 @@ public class StartScreenUIManager : MonoBehaviour
 
         if (success)
         {
+            // Sync any guest scores to the signed-in account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             CloseSignInScreen();
             OpenStartScreen();
         }
@@ -107,6 +125,8 @@ public class StartScreenUIManager : MonoBehaviour
 
         if (success)
         {
+            // Sync any guest scores to the new account
+            await PlayerDataManager.Instance.SyncGuestScoresToAccount();
             CloseCreateAccount();
             CloseSignInScreen();
             OpenStartScreen();
